@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<automotiveApp>
+    <!--
+        Declares this app as an IOT (Internet of Things) application for Android Automotive.
+        This category allows home automation control from the vehicle infotainment system.
+        Reference: https://developer.android.com/training/cars/apps/iot
+    -->
+    <uses name="template" />
+</automotiveApp>

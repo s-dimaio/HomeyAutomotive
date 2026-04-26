@@ -1,0 +1,45 @@
+# Android / Gradle
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+
+# Security & Signing (CRITICAL)
+*.jks
+*.keystore
+*.pk8
+*.pem
+
+# Build Outputs
+*.apk
+*.apks
+*.aab
+*.aar
+
+# System & IDEs
+.DS_Store
+.vscode/
+.kotlin/
+.antigravity/
+.agents/
+.antigravityignore
+
+# Project Specific
+/images/
+/json/
+/txt/
+scratch/
+release.ps1
+*.code-workspace

@@ -1,0 +1,80 @@
+import java.util.Properties
+
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+// Homey OAuth2 credentials have been moved exclusively to the Companion App.
+// No sensitive credentials are required directly in the AAOS app build.
+
+android {
+    namespace = "com.dimapp.android.homeyautomotive"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.dimapp.android.homeyautomotive"
+        minSdk = 29
+        targetSdk = 35
+        versionCode = 18
+        versionName = "1.4.7"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+
+
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+}
+
+dependencies {
+    // AndroidX Core
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+
+    // Car App Library (AAOS — categoria IOT)
+    implementation(libs.androidx.car.app.automotive)
+
+    // HTTP client — Retrofit + OkHttp
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.gson)
+    implementation(libs.coil)
+    implementation(libs.coil.svg)
+
+    // Kotlin Coroutines
+    implementation(libs.kotlinx.coroutines.android)
+
+    // Lifecycle / ViewModel (per coroutine scope nei Screen)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    // Storage cifrato per il Personal Access Token
+    implementation(libs.androidx.security.crypto)
+
+    // Test
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+}

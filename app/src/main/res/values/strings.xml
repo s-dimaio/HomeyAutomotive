@@ -1,0 +1,131 @@
+<resources>
+    <string name="app_name">Homey</string>
+    <string name="label_loading">Loading...</string>
+
+
+    <!-- SettingsScreen -->
+    <string name="settings_clear_icon_cache">Clear Cache</string>
+    <string name="settings_clear_icon_cache_desc">Refresh device list and all icons</string>
+    <string name="settings_home_tab_source">Home Tab</string>
+    <string name="settings_sync_interval">Update interval</string>
+    <string name="settings_sync_interval_label">Update interval</string>
+    <string name="settings_sync_interval_hint">Seconds (0 to disable)</string>
+    <string name="settings_header_title">Settings</string>
+
+
+
+    <string name="settings_cache_cleared">Cache cleared (Devices &amp; Icons).</string>
+    <string name="settings_cache_error">Error clearing cache.</string>
+    <string name="settings_saved">Settings saved.</string>
+
+
+    <!-- FlowListScreen (reserved for future development — not yet integrated in MainTabScreen) -->
+    <string name="flows_header_title">Homey Flows</string>
+    <string name="flows_error_title">Error</string>
+    <string name="flows_error_unknown">Unknown error</string>
+    <string name="flows_empty_message">No Flows found. Create a manual trigger Flow on Homey.</string>
+    <string name="flows_manual_folder">Manual Flows</string>
+    <string name="flows_running">Running...</string>
+    <string name="flows_started_toast">Flow \"%s\" started</string>
+    <string name="flows_error_toast">Error: %s</string>
+
+    <!-- HomeSourceSelectionScreen -->
+    <string name="source_header_title">Home Tab</string>
+    <string name="source_error_title">Error</string>
+    <string name="source_favorites_title">Favorite Devices</string>
+    <string name="source_dashboard_title">Dashboard Devices</string>
+    <string name="source_favorites_desc">Show your favorite devices</string>
+    <string name="source_selected_label">&#10003; Selected</string>
+    <string name="source_dashboard_desc">Show custom dashboard devices</string>
+    <string name="source_toast_favorites">Home: Favorite Devices</string>
+    <string name="source_toast_dashboard">Home: %s</string>
+
+    <!-- MainTabScreen -->
+    <string name="tab_home_title">Home</string>
+    <string name="tab_locks_title">Locks</string>
+    <string name="tab_lights_title">Lights</string>
+    <string name="tab_settings_title">Settings</string>
+    <string name="main_error_load_devices">Unable to load devices.\n\n%s</string>
+    <string name="main_retry_button">Retry</string>
+    <string name="main_no_locks">No locks found.</string>
+    <string name="main_no_lights">No lights found.</string>
+    <string name="main_error_dashboard_load">Error loading Dashboard: %s</string>
+    <string name="main_no_favorites">No favorite devices.</string>
+    <string name="main_no_dashboard_devices">No compatible devices in this dashboard.</string>
+    <string name="device_state_unavailable">Unavailable</string>
+    <string name="device_state_on">On</string>
+    <string name="device_state_off">Off</string>
+    <string name="device_state_open">Open</string>
+    <string name="device_state_closed">Closed</string>
+    
+    <!-- HomeyRepository -->
+    <string name="repo_error_not_configured">Homey not configured. Check settings.</string>
+    <string name="repo_error_devices_http">Device error: HTTP %d</string>
+    <string name="repo_error_zones_http">Zone error: HTTP %d</string>
+    <string name="repo_error_conn_failed">Connection failed: %s</string>
+    <string name="repo_error_flow_http">Flow error: HTTP %d</string>
+    <string name="repo_success_toggle">Command sent successfully</string>
+    <string name="repo_error_toggle_http">HTTP Error %d: unable to set capability</string>
+    <string name="repo_error_network">Network error: %s</string>
+    <string name="repo_success_flow">Flow started successfully</string>
+    <string name="repo_error_flow_trigger_http">HTTP Error %d: unable to start Flow</string>
+    <string name="repo_error_sync_failed">Sync failed: %s</string>
+    <string name="repo_error_auth_failed">Authentication failed: HTTP %d. Check PAT and Homey ID.</string>
+    <string name="repo_error_dashboard_not_found">Dashboard \'%s\' not found.</string>
+    <string name="repo_error_dashboards_http">HTTP Error %d: unable to retrieve dashboards.</string>
+    <string name="repo_zone_unknown">Unknown</string>
+
+    <!-- SystemInfoScreen -->
+    <string name="settings_system_info">System Information</string>
+    <string name="info_header_title">System Information</string>
+    <string name="info_android_version">Android Version</string>
+    <string name="info_android_value">Android %1$s (API %2$d)</string>
+    <string name="info_car_api_level">Car App API Level</string>
+    <string name="info_car_api_level_value">Level: %d</string>
+    <string name="info_host_label">Host Information</string>
+    <string name="info_host_value">Package: %1$s\nVersion: %2$s</string>
+    <string name="info_app_version_label">App Version</string>
+    <string name="info_app_version_value">%1$s (%2$d)</string>
+
+    <!-- OAuthSignInScreen -->
+    <string name="homey_companion_app_name">Android Automotive</string>
+    <string name="oauth_sign_in_title">Connect to Homey</string>
+    <string name="oauth_sign_in_error_title">Connection Error</string>
+    <string name="oauth_sign_in_instructions">Scan this QR code with your phone to sign in. Follow the instructions on your phone to complete the procedure.</string>
+    <string name="oauth_sign_in_exchanging">Authorizing — please wait…</string>
+    <string name="oauth_sign_in_additional">Expires in: %2$s\n\nHomey ID: %1$s</string>
+    <string name="oauth_sign_in_loading">Generating QR code via %s…</string>
+    <string name="oauth_sign_in_error">Connection failed. Possible causes:\n• Vehicle offline (no internet)\n• Incorrect Homey ID entered\n• %s not installed on your Homey\n• Homey offline or unreachable</string>
+    <string name="oauth_sign_in_retry">Retry</string>
+    <string name="oauth_sign_in_back">Modify Homey ID</string>
+    <string name="oauth_sign_in_session_expired_title">Session expired</string>
+    <string name="oauth_sign_in_session_expired_message">Tap Retry to get a new QR code.</string>
+
+
+
+    <!-- HomeyIdSetupScreen -->
+    <string name="homey_id_setup_title">Homey Account</string>
+    <string name="homey_id_setup_instructions">Enter your Homey ID (found in Homey app › Settings › General) to connect the vehicle.</string>
+
+    <string name="homey_id_setup_hint">Homey ID (e.g. abc123)</string>
+    <string name="homey_id_setup_confirm">Confirm</string>
+
+    <!-- HomeySelectionScreen -->
+    <string name="homey_selection_title">Homey Account</string>
+    <string name="homey_selection_add_hub">Add another Homey</string>
+    <string name="homey_selection_add_hub_desc">Add an additional Homey hub</string>
+    <string name="homey_selection_active_label">&#10003; Active</string>
+    <string name="homey_selection_disconnect_hub">Disconnect</string>
+    <string name="homey_detail_status">Status: %s</string>
+    <string name="homey_detail_active">&#10003; Active</string>
+    <string name="homey_detail_inactive">Inactive</string>
+    <string name="homey_detail_select">Set as active</string>
+    <string name="homey_selection_toast_active">Homey \"%s\" is now active</string>
+
+
+    <!-- SettingsScreen (OAuth2) -->
+    <string name="settings_account_section">Homey Account</string>
+    <string name="settings_status_oauth_ok">Connected to %s</string>
+    <string name="settings_status_oauth_missing">Not connected</string>
+    <string name="settings_sync_interval_seconds">%1$d seconds</string>
+</resources>

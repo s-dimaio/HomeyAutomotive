@@ -1,0 +1,22 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Application theme for the AAOS CarAppActivity host window. -->
+    <style name="Theme.HomeyAutomotive" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#FF1B5E20</item>
+        <item name="colorPrimaryVariant">#FF388E3C</item>
+        <item name="colorOnPrimary">#FFFFFFFF</item>
+        <item name="colorSecondary">#FF81C784</item>
+        <item name="colorSecondaryVariant">#FF388E3C</item>
+        <item name="colorOnSecondary">#FF000000</item>
+        <item name="android:statusBarColor">#FF1B5E20</item>
+    </style>
+
+    <!--
+        Required theme for androidx.car.app.activity.CarAppActivity.
+        This theme is applied to the host activity that renders the Car App templates.
+        It should be windowless/transparent so the AAOS system can draw the UI.
+    -->
+    <style name="Theme.CarApp" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+</resources>
