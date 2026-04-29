@@ -40,100 +40,44 @@ import kotlinx.coroutines.launch
 class HomeSourceSelectionScreen(carContext: CarContext) : Screen(carContext) {
 
     private val storage = DependencyManager.getTokenStorage(carContext)
-    private val repository = DependencyManager.getDashboardRepository(carContext)
-    private val scope      = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    /** State: null = loading, empty = no dashboards, non-empty = ready */
-    private var dashboards: List<HomeyDashboard>? = null
-    private var errorMessage: String? = null
+    // The Dashboard ID is now fixed as we use the Virtual Dashboard from the Companion App
+    private val VIRTUAL_DASHBOARD_ID = "virtual-aaos-home"
 
-    init {
-        lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onCreate(owner: LifecycleOwner) {
-                _loadDashboards()
-            }
-            override fun onDestroy(owner: LifecycleOwner) {
-                scope.cancel()
-            }
-        })
-    }
-
-    /**
-     * Builds the template shown in this screen.
-     *
-     * Public method.
-     * While loading, shows a loading state on the template.
-     * On error, shows a single row with the error message.
-     * When ready, shows "Favorite Devices" + one row per dashboard.
-     *
-     * @return The [ListTemplate] to render.
-     * @example
-     * val template = screen.onGetTemplate()
-     */
     override fun onGetTemplate(): Template {
         val listBuilder = ItemList.Builder()
+        val currentSource = storage.getHomeSource()
+        val currentDashboardId = storage.getHomeDashboardId()
 
-        when {
-            dashboards == null && errorMessage == null -> {
-                // Loading state: show an empty list (the template shows a spinner)
-                return ListTemplate.Builder()
-                    .setHeader(
-                        Header.Builder()
-                            .setTitle(carContext.getString(R.string.source_header_title))
-                            .setStartHeaderAction(Action.BACK)
-                            .build()
-                    )
-                    .setLoading(true)
-                    .build()
-            }
-
-            errorMessage != null -> {
-                listBuilder.addItem(
-                    Row.Builder()
-                        .setTitle(carContext.getString(R.string.source_error_title))
-                        .addText(errorMessage ?: carContext.getString(R.string.flows_error_unknown))
-                        .build()
-                )
-            }
-
-            else -> {
-                val currentSource     = storage.getHomeSource()
-                val currentDashboardId = storage.getHomeDashboardId()
-
-                // Row: Favorite Devices
-                val favSubtitle = if (currentSource == HomeSource.FAVORITES) carContext.getString(R.string.source_selected_label) else ""
-                val favRowBuilder = Row.Builder()
-                    .setTitle(carContext.getString(R.string.source_favorites_title))
-                
-                if (favSubtitle.isNotEmpty()) {
-                    favRowBuilder.addText(favSubtitle)
-                }
-
-                listBuilder.addItem(
-                    favRowBuilder
-                        .setOnClickListener { _selectFavorites() }
-                        .build()
-                )
-
-                for (dashboard in dashboards ?: emptyList()) {
-                    val isSelected = currentSource == HomeSource.DASHBOARD && currentDashboardId == dashboard.id
-                    val subtitle   = if (isSelected) carContext.getString(R.string.source_selected_label) else ""
-                    
-                    val rowBuilder = Row.Builder()
-                        .setTitle(dashboard.name)
-
-                    if (subtitle.isNotEmpty()) {
-                        rowBuilder.addText(subtitle)
-                    }
-
-                    listBuilder.addItem(
-                        rowBuilder
-                            .setOnClickListener { _selectDashboard(dashboard) }
-                            .build()
-                    )
-                }
-            }
+        // 1. Row: Favorite Devices
+        val isFavSelected = currentSource == HomeSource.FAVORITES
+        val favRowBuilder = Row.Builder()
+            .setTitle(carContext.getString(R.string.source_favorites_title))
+        
+        if (isFavSelected) {
+            favRowBuilder.addText(carContext.getString(R.string.source_selected_label))
         }
+
+        listBuilder.addItem(
+            favRowBuilder
+                .setOnClickListener { _selectFavorites() }
+                .build()
+        )
+
+        // 2. Row: Dashboard (Virtual)
+        val isDashSelected = currentSource == HomeSource.DASHBOARD && currentDashboardId == VIRTUAL_DASHBOARD_ID
+        val dashRowBuilder = Row.Builder()
+            .setTitle(carContext.getString(R.string.source_dashboard_title))
+        
+        if (isDashSelected) {
+            dashRowBuilder.addText(carContext.getString(R.string.source_selected_label))
+        }
+
+        listBuilder.addItem(
+            dashRowBuilder
+                .setOnClickListener { _selectDashboard() }
+                .build()
+        )
 
         return ListTemplate.Builder()
             .setHeader(
@@ -148,61 +92,16 @@ class HomeSourceSelectionScreen(carContext: CarContext) : Screen(carContext) {
 
     // ── Private Methods ────────────────────────────────────────────────────────────
 
-    /**
-     * Loads available dashboards from Homey in background, then refreshes the template.
-     *
-     * Private method.
-     *
-     * @private
-     * @example
-     * _loadDashboards()
-     */
-    private fun _loadDashboards() {
-        scope.launch {
-            when (val result = repository.getDashboards()) {
-                is HomeyResult.Success -> {
-                    dashboards = result.data
-                    errorMessage = null
-                }
-                is HomeyResult.Error -> {
-                    dashboards = emptyList()
-                    errorMessage = result.message
-                }
-            }
-            invalidate()
-        }
-    }
-
-    /**
-     * Persists [HomeSource.FAVORITES] as the Home tab source and navigates back.
-     *
-     * Private method.
-     *
-     * @private
-     * @example
-     * _selectFavorites()
-     */
     private fun _selectFavorites() {
         storage.saveHomeSource(HomeSource.FAVORITES)
         CarToast.makeText(carContext, carContext.getString(R.string.source_toast_favorites), CarToast.LENGTH_SHORT).show()
         screenManager.pop()
     }
 
-    /**
-     * Persists [HomeSource.DASHBOARD] and the given [dashboard] ID as the Home tab source,
-     * then navigates back.
-     *
-     * Private method.
-     *
-     * @private
-     * @param dashboard The selected [HomeyDashboard].
-     * @example
-     * _selectDashboard(myDashboard)
-     */
-    private fun _selectDashboard(dashboard: HomeyDashboard) {
+    private fun _selectDashboard() {
         storage.saveHomeSource(HomeSource.DASHBOARD)
-        storage.saveHomeDashboardId(dashboard.id)
-        CarToast.makeText(carContext, carContext.getString(R.string.source_toast_dashboard, dashboard.name), CarToast.LENGTH_SHORT).show()
+        storage.saveHomeDashboardId(VIRTUAL_DASHBOARD_ID)
+        CarToast.makeText(carContext, carContext.getString(R.string.source_toast_dashboard, carContext.getString(R.string.source_dashboard_title)), CarToast.LENGTH_SHORT).show()
         screenManager.pop()
     }
 }

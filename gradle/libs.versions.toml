@@ -23,6 +23,7 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 # Car App Library (AAOS)
+androidx-car-app = { group = "androidx.car.app", name = "app", version.ref = "carApp" }
 androidx-car-app-automotive = { group = "androidx.car.app", name = "app-automotive", version.ref = "carApp" }
 
 # Retrofit + OkHttp

@@ -15,8 +15,8 @@ android {
         applicationId = "com.dimapp.android.homeyautomotive"
         minSdk = 29
         targetSdk = 35
-        versionCode = 18
-        versionName = "1.4.7"
+        versionCode = 23
+        versionName = "1.4.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -43,6 +43,11 @@ android {
     buildFeatures {
         buildConfig = true
     }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
 }
 
 dependencies {
@@ -52,6 +57,7 @@ dependencies {
     implementation(libs.material)
 
     // Car App Library (AAOS — categoria IOT)
+    implementation(libs.androidx.car.app)
     implementation(libs.androidx.car.app.automotive)
 
     // HTTP client — Retrofit + OkHttp

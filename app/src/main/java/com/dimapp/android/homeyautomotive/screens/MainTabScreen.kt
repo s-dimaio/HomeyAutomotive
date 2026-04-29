@@ -64,9 +64,10 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
     private var syncJob: Job? = null
     private var loadJob: Job? = null
 
-    /** Tracks the last used source and dashboard to detect changes when returning from settings. */
+    /** Tracks the last used source, dashboard and hub to detect changes when returning from settings. */
     private var lastHomeSource: HomeSource? = null
     private var lastDashboardId: String? = null
+    private var lastActiveHubId: String? = null
 
     /** Helper for icon caching and async downloading. */
     private val iconManager = MainTabIconManager(
@@ -241,9 +242,11 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
         loadJob = scope.launch {
             val source = storage.getHomeSource()
             val dashboardId = storage.getHomeDashboardId()
+            val hubId = storage.getSelectedHomeyId()
             
             lastHomeSource = source
             lastDashboardId = dashboardId
+            lastActiveHubId = hubId
 
             // INVALIDATE CACHE for the specific dashboard to force a fresh fetch from the companion app.
             // This is critical for the "Virtual Dashboard" which has a static ID but dynamic content.
@@ -341,29 +344,33 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
     private fun _checkAndRefresh() {
         val currentSource = storage.getHomeSource()
         val currentDashboardId = storage.getHomeDashboardId()
+        val currentHubId = storage.getSelectedHomeyId()
+
+        val hubChanged = currentHubId != lastActiveHubId
 
         // Reload only if:
         // - It is the first run (lastHomeSource has never been set), OR
         // - The user explicitly changed the Home tab source or selected dashboard in Settings, OR
+        // - The active Homey Hub changed, OR
         // - The device cache was invalidated externally (e.g., after a manual "Clear Cache" action).
-        //
-        // NOTE: The periodic sync loop (see _startPeriodicSync) handles data freshness for
-        // all cases — including the Dashboard source — while the app is in the foreground.
-        // A redundant force-reload here would cause unnecessary duplicate network calls.
         val configChanged = lastHomeSource == null ||
                            currentSource != lastHomeSource ||
-                           currentDashboardId != lastDashboardId
+                           currentDashboardId != lastDashboardId ||
+                           hubChanged
 
         val needsReload = configChanged || deviceRepository.isCacheEmpty()
 
         if (needsReload) {
-            val isSilent = devices.isNotEmpty()
+            // Show a loading spinner (not silent) if the list is empty OR if the hub changed
+            val isSilent = devices.isNotEmpty() && !hubChanged
+            
             // Force-bypass the repository cache only if the source configuration has explicitly changed.
+            // When the hub changes, DeviceRepository already ignores its own cache internally.
             val shouldForce = configChanged && currentSource == HomeSource.DASHBOARD
-            Log.d(TAG, "_checkAndRefresh: reload needed (configChanged=$configChanged, cacheEmpty=${deviceRepository.isCacheEmpty()}, silent=$isSilent, force=$shouldForce)")
+            
+            Log.d(TAG, "_checkAndRefresh: reload needed (configChanged=$configChanged, hubChanged=$hubChanged, cacheEmpty=${deviceRepository.isCacheEmpty()}, silent=$isSilent, force=$shouldForce)")
             _loadDevices(silent = isSilent, force = shouldForce)
         }
-
     }
 
     /**
@@ -413,11 +420,11 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
                 val dashboardId = storage.getHomeDashboardId()
                 val dashboardList = if (dashboardId != null) _dashboardDeviceIds(dashboardId) else emptySet()
 
-                when {
-                    source == HomeSource.DASHBOARD && dashboardId != null && dashboardList.isNotEmpty() ->
-                        devices.filter { device -> device.id in dashboardList }
-                    else ->
-                        devices.filter { it.isFavorite }
+                if (source == HomeSource.DASHBOARD) {
+                    val dashboardList = if (dashboardId != null) _dashboardDeviceIds(dashboardId) else emptySet()
+                    devices.filter { device -> device.id in dashboardList }
+                } else {
+                    devices.filter { it.isFavorite }
                 }
             }
             "tab_locks"  -> devices.filter { !it.isLight && !it.isHidden && !it.isGroupMember }
@@ -570,13 +577,11 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
             }
         }
 
-        val dashboardList = if (dashboardId != null) _dashboardDeviceIds(dashboardId) else emptySet()
-        
-        val homeDevices = when {
-            source == HomeSource.DASHBOARD && dashboardId != null && dashboardList.isNotEmpty() ->
-                devices.filter { device -> device.id in dashboardList }
-            else ->
-                devices.filter { it.isFavorite }
+        val homeDevices = if (source == HomeSource.DASHBOARD) {
+            val dashboardList = if (dashboardId != null) _dashboardDeviceIds(dashboardId) else emptySet()
+            devices.filter { device -> device.id in dashboardList }
+        } else {
+            devices.filter { it.isFavorite }
         }
 
         return renderer.buildHomeGrid(

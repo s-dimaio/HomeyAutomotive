@@ -296,7 +296,7 @@ class TokenStorage(private val context: Context) {
      * @example val source = storage.getHomeSource()
      */
     fun getHomeSource(): HomeSource {
-        val raw = prefs.getString(KEY_HOME_SOURCE, null)
+        val raw = prefs.getString(_getScopedKey(KEY_HOME_SOURCE), null)
         return if (raw == HomeSource.DASHBOARD.name) HomeSource.DASHBOARD else HomeSource.FAVORITES
     }
 
@@ -308,7 +308,7 @@ class TokenStorage(private val context: Context) {
      * @example storage.saveHomeSource(HomeSource.DASHBOARD)
      */
     fun saveHomeSource(source: HomeSource) {
-        prefs.edit().putString(KEY_HOME_SOURCE, source.name).apply()
+        prefs.edit().putString(_getScopedKey(KEY_HOME_SOURCE), source.name).apply()
     }
 
     /**
@@ -318,7 +318,7 @@ class TokenStorage(private val context: Context) {
      * @return Dashboard UUID string, or `null`.
      * @example val id = storage.getHomeDashboardId()
      */
-    fun getHomeDashboardId(): String? = prefs.getString(KEY_HOME_DASHBOARD_ID, null)
+    fun getHomeDashboardId(): String? = prefs.getString(_getScopedKey(KEY_HOME_DASHBOARD_ID), null)
 
     /**
      * Persists the UUID of the dashboard chosen as the Home tab source.
@@ -328,7 +328,7 @@ class TokenStorage(private val context: Context) {
      * @example storage.saveHomeDashboardId("f3959433-a516-4600-a510-26fbda1bcbd1")
      */
     fun saveHomeDashboardId(dashboardId: String) {
-        prefs.edit().putString(KEY_HOME_DASHBOARD_ID, dashboardId).apply()
+        prefs.edit().putString(_getScopedKey(KEY_HOME_DASHBOARD_ID), dashboardId).apply()
     }
 
     /**
@@ -361,7 +361,17 @@ class TokenStorage(private val context: Context) {
         prefs.edit().clear().apply()
     }
 
-    // ── Private Methods ───────────────────────────────────────────────────────
+    /**
+     * Generates a preference key scoped to the currently active Homey hub.
+     *
+     * @private
+     * @param baseKey The original setting key (e.g. "home_source").
+     * @return A scoped key (e.g. "home_source_abc123") or the baseKey if no hub is active.
+     */
+    private fun _getScopedKey(baseKey: String): String {
+        val activeId = getSelectedHomeyId() ?: return baseKey
+        return "${baseKey}_$activeId"
+    }
 
     /**
      * Builds and returns the [EncryptedSharedPreferences] instance.

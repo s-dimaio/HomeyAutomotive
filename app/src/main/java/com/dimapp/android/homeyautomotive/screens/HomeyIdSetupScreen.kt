@@ -86,15 +86,20 @@ class HomeyIdSetupScreen(
      * @param id The Homey Cloud ID entered by the user. Must not be blank.
      */
     private fun _onConfirm(id: String) {
-        if (id.isBlank()) {
+        // Remove all whitespace characters (spaces, tabs, newlines) from the ID.
+        // This is especially useful for voice dictation which often inserts spaces during pauses.
+        val cleanedId = id.replace("\\s".toRegex(), "")
+
+        if (cleanedId.isBlank()) {
             Log.w(TAG, "User submitted empty Homey ID — ignoring.")
             return
         }
-        Log.d(TAG, "Homey ID confirmed: ${id.take(6)}... (isAddingHub=$isAddingHub). Pushing OAuth screen directly via button.")
+
+        Log.d(TAG, "Homey ID confirmed: ${cleanedId.take(6)}... (isAddingHub=$isAddingHub). Pushing OAuth screen.")
         screenManager.push(
             OAuthSignInScreen(
                 carContext = carContext,
-                targetHomeyId = id,
+                targetHomeyId = cleanedId,
                 isAddingHub = isAddingHub
             )
         )
