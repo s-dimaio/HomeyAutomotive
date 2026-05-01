@@ -119,26 +119,43 @@ class SettingsScreen(carContext: CarContext) : Screen(carContext) {
             )
 
             // Sync interval
+            val interval = storage.getSyncInterval()
+            val intervalText = if (interval == 0) {
+                carContext.getString(R.string.settings_sync_interval_disabled)
+            } else {
+                carContext.getString(R.string.settings_sync_interval_seconds, interval)
+            }
+
             listBuilder.addItem(
                 Row.Builder()
                     .setTitle(carContext.getString(R.string.settings_sync_interval))
-                    .addText(carContext.getString(R.string.settings_sync_interval_seconds, storage.getSyncInterval()))
+                    .addText(intervalText)
                     .setOnClickListener {
                         screenManager.pushForResult(
                             SettingsInputScreen(
-                                carContext,
-                                carContext.getString(R.string.settings_sync_interval_label),
-                                carContext.getString(R.string.settings_sync_interval_hint),
-                                storage.getSyncInterval().toString(),
-                                InputSignInMethod.KEYBOARD_NUMBER
-                            ) { text ->
-                                text.toIntOrNull()?.let { seconds ->
-                                    if (seconds >= 0) {
-                                        storage.saveSyncInterval(seconds)
-                                        CarToast.makeText(carContext, R.string.settings_saved, CarToast.LENGTH_SHORT).show()
+                                carContext = carContext,
+                                title = carContext.getString(R.string.settings_sync_interval_label),
+                                hint = carContext.getString(R.string.settings_sync_interval_hint),
+                                initialValue = storage.getSyncInterval().toString(),
+                                additionalText = carContext.getString(R.string.settings_sync_interval_additional_text),
+                                keyboardType = InputSignInMethod.KEYBOARD_NUMBER,
+                                validator = { text ->
+                                    val value = text.toIntOrNull()
+                                    if (text.isEmpty() || value == null || value !in 0..300) {
+                                        carContext.getString(R.string.settings_sync_interval_error)
+                                    } else {
+                                        null
+                                    }
+                                },
+                                onSave = { text ->
+                                    text.toIntOrNull()?.let { seconds ->
+                                        if (seconds in 0..300) {
+                                            storage.saveSyncInterval(seconds)
+                                            CarToast.makeText(carContext, R.string.settings_saved, CarToast.LENGTH_SHORT).show()
+                                        }
                                     }
                                 }
-                            }
+                            )
                         ) { invalidate() }
                     }
                     .build()
@@ -209,12 +226,16 @@ class SettingsScreen(carContext: CarContext) : Screen(carContext) {
  * Closes itself (pops) when the user submits or navigates back.
  *
  * Implements "Save on Back" logic by intercepting the screen's lifecycle (onPause).
+ * Error handling follows the pattern from the official Google car-samples repository
+ * (SignInTemplateDemoScreen), using two fields to track the current and last-shown error.
  *
  * @param carContext    The [CarContext] provided by the Car App framework.
  * @param title         Title shown at the top of the sign-in template.
  * @param hint          Placeholder text for the input field.
  * @param initialValue  Pre-filled value to display in the input field.
+ * @param additionalText Optional helper text displayed below the input field.
  * @param keyboardType  Keyboard type hint (e.g. [InputSignInMethod.KEYBOARD_NUMBER]).
+ * @param validator     Optional validation function. Returns an error string if invalid, null otherwise.
  * @param onSave        Callback invoked with the saved text on submit or back navigation.
  */
 class SettingsInputScreen(
@@ -222,32 +243,62 @@ class SettingsInputScreen(
     private val title: String,
     private val hint: String,
     private val initialValue: String,
+    private val additionalText: String? = null,
     private val keyboardType: Int = InputSignInMethod.KEYBOARD_DEFAULT,
+    private val validator: ((String) -> String?)? = null,
     private val onSave: (String) -> Unit
 ) : Screen(carContext) {
 
     private var inputBuffer = initialValue
     private var isSubmitted = false
 
+    // Mirrors mErrorMessage / mLastErrorMessage from Google's SignInTemplateDemoScreen sample.
+    // Empty string means "no error". lastErrorMessage tracks the last error actually rendered
+    // to the screen, so we avoid unnecessary invalidate() calls.
+    private var errorMessage: String = ""
+    private var lastErrorMessage: String = ""
+
     init {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onPause(owner: LifecycleOwner) {
-                // Save even if the user presses Back without hitting Submit
+                // Save even if the user presses Back without hitting Submit, but ONLY if valid
                 if (!isSubmitted) {
-                    onSave(inputBuffer)
-                    setResult(inputBuffer)
+                    val error = validator?.invoke(inputBuffer) ?: ""
+                    if (error.isEmpty()) {
+                        onSave(inputBuffer)
+                        setResult(inputBuffer)
+                    }
                 }
             }
         })
     }
 
     override fun onGetTemplate(): Template {
-        val signInMethod = InputSignInMethod.Builder(object : InputCallback {
+        val signInMethodBuilder = InputSignInMethod.Builder(object : InputCallback {
             override fun onInputTextChanged(text: String) {
                 inputBuffer = text
+                if (validator != null) {
+                    errorMessage = validator.invoke(text) ?: ""
+                    // Mirrors Google sample logic: invalidate ONLY if clearing an existing error,
+                    // or if the error message has changed. This avoids the invalidate() loop.
+                    if (lastErrorMessage.isNotEmpty() &&
+                        (errorMessage.isEmpty() || lastErrorMessage != errorMessage)
+                    ) {
+                        invalidate()
+                    }
+                }
             }
 
             override fun onInputSubmitted(text: String) {
+                if (validator != null) {
+                    errorMessage = validator.invoke(text) ?: ""
+                    if (errorMessage.isNotEmpty()) {
+                        // Always invalidate on submit to ensure the error is shown
+                        invalidate()
+                        return
+                    }
+                }
+
                 isSubmitted = true
                 onSave(text)
                 setResult(text)
@@ -255,14 +306,25 @@ class SettingsInputScreen(
             }
         })
             .setHint(hint)
-            .setDefaultValue(initialValue)
+            .setDefaultValue(inputBuffer)
             .setKeyboardType(keyboardType)
             .setShowKeyboardByDefault(true)
-            .build()
 
-        return SignInTemplate.Builder(signInMethod)
+        if (errorMessage.isNotEmpty()) {
+            signInMethodBuilder.setErrorMessage(errorMessage)
+            lastErrorMessage = errorMessage  // Track what was actually rendered
+        }
+
+        val templateBuilder = SignInTemplate.Builder(signInMethodBuilder.build())
             .setTitle(title)
             .setHeaderAction(Action.BACK)
-            .build()
+
+        if (additionalText != null) {
+            templateBuilder.setAdditionalText(additionalText)
+        }
+
+        return templateBuilder.build()
     }
 }
+
+

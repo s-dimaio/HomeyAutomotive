@@ -15,8 +15,8 @@ android {
         applicationId = "com.dimapp.android.homeyautomotive"
         minSdk = 29
         targetSdk = 35
-        versionCode = 23
-        versionName = "1.4.12"
+        versionCode = 29
+        versionName = "1.4.18"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -32,6 +32,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

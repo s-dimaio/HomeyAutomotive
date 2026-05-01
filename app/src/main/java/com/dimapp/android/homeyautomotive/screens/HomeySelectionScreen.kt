@@ -135,9 +135,14 @@ class HomeySelectionScreen(
                 .addText(carContext.getString(R.string.homey_selection_add_hub_desc))
                 .setOnClickListener(
                     ParkedOnlyOnClickListener.create {
-                        screenManager.push(
-                            HomeyIdSetupScreen(carContext = carContext, isAddingHub = true)
-                        )
+                        // Use a short delay to allow the AAOS host to settle UX restrictions state.
+                        // Without this, the host sometimes throws a false positive 
+                        // "Sign-in not available while driving" error when pushing a SignInTemplate.
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            screenManager.push(
+                                HomeyIdSetupScreen(carContext = carContext, isAddingHub = true)
+                            )
+                        }, 500)
                     }
                 )
                 .build()

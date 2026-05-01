@@ -59,7 +59,11 @@ class DeviceRepository(
         }
         Log.d(TAG, "$reason. Fetching from network...")
 
-        val service = _buildService() ?: return HomeyResult.Error(context.getString(R.string.repo_error_not_configured))
+        val service = _buildService()
+        if (service == null) {
+            Log.e(TAG, "Cannot fetch devices: HomeyApiService is null (check if Hub is configured).")
+            return HomeyResult.Error(context.getString(R.string.repo_error_not_configured))
+        }
 
         return try {
             val devicesResponse = service.getDevices()
@@ -67,9 +71,13 @@ class DeviceRepository(
             val userResponse = service.getUserMe()
 
             if (!devicesResponse.isSuccessful) {
+                val errorBody = devicesResponse.errorBody()?.string()
+                Log.e(TAG, "Devices fetch failed: HTTP ${devicesResponse.code()} - $errorBody")
                 return HomeyResult.Error(context.getString(R.string.repo_error_devices_http, devicesResponse.code()))
             }
             if (!zonesResponse.isSuccessful) {
+                val errorBody = zonesResponse.errorBody()?.string()
+                Log.e(TAG, "Zones fetch failed: HTTP ${zonesResponse.code()} - $errorBody")
                 return HomeyResult.Error(context.getString(R.string.repo_error_zones_http, zonesResponse.code()))
             }
 
@@ -95,6 +103,7 @@ class DeviceRepository(
             Log.d(TAG, "Fetched ${mappedDevices.size} devices from network and saved to cache.")
             HomeyResult.Success(mappedDevices)
         } catch (e: Exception) {
+            Log.e(TAG, "Exception during getDevices: ${e.message}", e)
             HomeyResult.Error(context.getString(R.string.repo_error_conn_failed, e.message ?: "Unknown error"))
         }
     }

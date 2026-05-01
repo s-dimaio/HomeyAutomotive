@@ -11,6 +11,9 @@
     <string name="settings_sync_interval_label">Intervallo di aggiornamento</string>
     <string name="settings_sync_interval_hint">Secondi (0 per disattivare)</string>
     <string name="settings_header_title">Impostazioni</string>
+    <string name="settings_sync_interval_additional_text">Inserisci un valore di secondi tra 0 (disabilitato) e 300.</string>
+    <string name="settings_sync_interval_error">Deve essere un numero tra 0 e 300</string>
+    <string name="settings_sync_interval_disabled">Nessun aggiornamento</string>
 
 
     <string name="settings_cache_cleared">Cache pulita (Dispositivi e Icone).</string>
@@ -90,10 +93,10 @@
     <string name="homey_companion_app_name">Android Automotive</string>
     <string name="oauth_sign_in_title">Connetti a Homey</string>
     <string name="oauth_sign_in_error_title">Errore di connessione</string>
-    <string name="oauth_sign_in_instructions">Scansiona questo QR code con il tuo telefono per accedere. Segui le istruzioni sul tuo telefono per completare la procedura.</string>
+    <string name="oauth_sign_in_instructions">Scansiona il codice QR per accedere</string>
     <string name="oauth_sign_in_exchanging">Autorizzazione in corso — attendere…</string>
-    <string name="oauth_sign_in_additional">Scade tra: %2$s\n\nHomey ID: %1$s</string>
-    <string name="oauth_sign_in_loading">Generazione QR code tramite %s…</string>
+    <string name="oauth_sign_in_additional">Scadenza tra: %2$s | ID Homey: %1$s</string>
+    <string name="oauth_sign_in_loading">Generazione del codice QR in corso…</string>
     <string name="oauth_sign_in_error">Connessione fallita. Cause possibili:\n• Veicolo offline (senza internet)\n• Homey ID inserito errato\n• %s non installata sul tuo Homey\n• Homey offline o non raggiungibile</string>
     <string name="oauth_sign_in_retry">Riprova</string>
     <string name="oauth_sign_in_back">Modifica Homey ID</string>
@@ -103,10 +106,12 @@
 
     <!-- HomeyIdSetupScreen -->
     <string name="homey_id_setup_title">Account Homey</string>
-    <string name="homey_id_setup_instructions">Inserisci il tuo Homey ID (si trova in Impostazioni › Generale nell\'app Homey) per collegare il veicolo.</string>
-
+    <string name="homey_id_setup_instructions">Inserisci il tuo Homey ID</string>
+    <string name="homey_id_setup_additional">Homey app: Impostazioni -> Generali -> ID Homey</string>
     <string name="homey_id_setup_hint">Homey ID (es. abc123)</string>
     <string name="homey_id_setup_confirm">Conferma</string>
+    <string name="homey_id_setup_clear">Cancella</string>
+    <string name="homey_id_setup_error_empty">L\'ID Homey non può essere vuoto</string>
 
     <!-- HomeySelectionScreen -->
     <string name="homey_selection_title">Account Homey</string>

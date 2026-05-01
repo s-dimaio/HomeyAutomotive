@@ -38,36 +38,63 @@ class HomeyIdSetupScreen(
     /** The current value typed into the input field. Updated by [InputCallback.onInputTextChanged]. */
     private var inputValue: String = initialId
 
+    /** Current error message to show below the input field (if any). */
+    private var errorMessage: String? = null
+
+    /** Counter to force the host to treat the input field as new on every clear. */
+    private var resetCount: Int = 0
+
     /**
      * Builds a [SignInTemplate] with an [InputSignInMethod] for the Homey Cloud ID entry.
      *
      * @return The [Template] for this screen.
      */
     override fun onGetTemplate(): Template {
-        val inputMethod = InputSignInMethod.Builder(object : InputCallback {
+        val inputMethodBuilder = InputSignInMethod.Builder(object : InputCallback {
             override fun onInputTextChanged(text: String) {
                 inputValue = text
+                // Hide error message as soon as the user starts typing again
+                if (errorMessage != null) {
+                    errorMessage = null
+                    invalidate()
+                }
             }
 
             override fun onInputSubmitted(text: String) {
-                // The CarHost passes the final text reliably here — use it directly.
                 _onConfirm(text.trim())
             }
         })
-            .setHint(carContext.getString(R.string.homey_id_setup_hint))
+            // Append invisible zero-width spaces to force the host to recreate the input field
+            .setHint(carContext.getString(R.string.homey_id_setup_hint) + "\u200B".repeat(resetCount % 5))
             .setDefaultValue(inputValue)
             .setKeyboardType(InputSignInMethod.KEYBOARD_DEFAULT)
             .setShowKeyboardByDefault(true)
-            .build()
+
+        // Set error message if validation failed
+        errorMessage?.let { inputMethodBuilder.setErrorMessage(it) }
+
+        val inputMethod = inputMethodBuilder.build()
 
         return SignInTemplate.Builder(inputMethod)
             .setTitle(carContext.getString(R.string.homey_id_setup_title))
             .setHeaderAction(if (isAddingHub) Action.BACK else Action.APP_ICON)
             .setInstructions(carContext.getString(R.string.homey_id_setup_instructions))
+            .setAdditionalText(carContext.getString(R.string.homey_id_setup_additional))
             .addAction(
                 Action.Builder()
                     .setTitle(carContext.getString(R.string.homey_id_setup_confirm))
                     .setOnClickListener(ParkedOnlyOnClickListener.create { _onConfirm(inputValue) })
+                    .build()
+            )
+            .addAction(
+                Action.Builder()
+                    .setTitle(carContext.getString(R.string.homey_id_setup_clear))
+                    .setOnClickListener(ParkedOnlyOnClickListener.create {
+                        inputValue = ""
+                        errorMessage = null
+                        resetCount++
+                        invalidate()
+                    })
                     .build()
             )
             .build()
@@ -91,7 +118,9 @@ class HomeyIdSetupScreen(
         val cleanedId = id.replace("\\s".toRegex(), "")
 
         if (cleanedId.isBlank()) {
-            Log.w(TAG, "User submitted empty Homey ID — ignoring.")
+            Log.w(TAG, "User submitted empty Homey ID — showing error.")
+            errorMessage = carContext.getString(R.string.homey_id_setup_error_empty)
+            invalidate()
             return
         }
 

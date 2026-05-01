@@ -11,6 +11,9 @@
     <string name="settings_sync_interval_label">Update interval</string>
     <string name="settings_sync_interval_hint">Seconds (0 to disable)</string>
     <string name="settings_header_title">Settings</string>
+    <string name="settings_sync_interval_additional_text">Enter a value of seconds between 0 (disabled) and 300.</string>
+    <string name="settings_sync_interval_error">Must be a number between 0 and 300</string>
+    <string name="settings_sync_interval_disabled">No update</string>
 
 
 
@@ -91,10 +94,10 @@
     <string name="homey_companion_app_name">Android Automotive</string>
     <string name="oauth_sign_in_title">Connect to Homey</string>
     <string name="oauth_sign_in_error_title">Connection Error</string>
-    <string name="oauth_sign_in_instructions">Scan this QR code with your phone to sign in. Follow the instructions on your phone to complete the procedure.</string>
+    <string name="oauth_sign_in_instructions">Scan the QR code to sign in</string>
     <string name="oauth_sign_in_exchanging">Authorizing — please wait…</string>
-    <string name="oauth_sign_in_additional">Expires in: %2$s\n\nHomey ID: %1$s</string>
-    <string name="oauth_sign_in_loading">Generating QR code via %s…</string>
+    <string name="oauth_sign_in_additional">Expires in: %2$s | Homey ID: %1$s</string>
+    <string name="oauth_sign_in_loading">Generating QR code…</string>
     <string name="oauth_sign_in_error">Connection failed. Possible causes:\n• Vehicle offline (no internet)\n• Incorrect Homey ID entered\n• %s not installed on your Homey\n• Homey offline or unreachable</string>
     <string name="oauth_sign_in_retry">Retry</string>
     <string name="oauth_sign_in_back">Modify Homey ID</string>
@@ -105,10 +108,12 @@
 
     <!-- HomeyIdSetupScreen -->
     <string name="homey_id_setup_title">Homey Account</string>
-    <string name="homey_id_setup_instructions">Enter your Homey ID (found in Homey app › Settings › General) to connect the vehicle.</string>
-
+    <string name="homey_id_setup_instructions">Enter your Homey ID</string>
+    <string name="homey_id_setup_additional">Homey app: Settings -> General -> Homey ID</string>
     <string name="homey_id_setup_hint">Homey ID (e.g. abc123)</string>
     <string name="homey_id_setup_confirm">Confirm</string>
+    <string name="homey_id_setup_clear">Clear</string>
+    <string name="homey_id_setup_error_empty">Homey ID cannot be empty</string>
 
     <!-- HomeySelectionScreen -->
     <string name="homey_selection_title">Homey Account</string>

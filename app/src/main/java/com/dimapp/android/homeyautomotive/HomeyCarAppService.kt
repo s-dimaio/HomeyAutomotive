@@ -61,9 +61,6 @@ class HomeySession : Session() {
      * @return The initial [Screen] to display.
      */
     override fun onCreateScreen(intent: Intent): Screen {
-        // HomeySelectionScreen is now our fixed root.
-        // It handles auto-redirecting to either MainTabScreen (if logged in)
-        // or HomeyIdSetupScreen (if not) during its lifecycle.
         return HomeySelectionScreen(carContext)
     }
 }
