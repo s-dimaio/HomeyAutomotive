@@ -316,6 +316,46 @@ class HomeyAuthRepository(
             storage.saveUserProfile(it.name)
         }
 
+        // 4. Persist home location if provided
+        token.location?.let { loc ->
+            storage.saveHomeLocation(loc.latitude, loc.longitude, homeyId)
+            Log.d(TAG, "Home location saved for hub $homeyId: (lat=***, lng=***)")
+        }
+
         Log.d(TAG, "Auth data successfully persisted for hub: $homeyId (Name: $resolvedName)")
+    }
+
+    /**
+     * Fetches and refreshes the home location coordinates and geofence barrier configuration from the active Homey Companion App.
+     *
+     * @public
+     * @param homeyId Optional target hub ID. If null, the currently active hub is used.
+     * @return [Pair] of latitude and longitude, or null if retrieval fails.
+     */
+    suspend fun refreshHomeLocation(homeyId: String? = null): Pair<Double, Double>? {
+        val targetId = homeyId ?: storage.getSelectedHomeyId() ?: return null
+        if (targetId == "demo" || storage.isDemoMode()) {
+            Log.d(TAG, "[HomeyAuthRepository:refreshHomeLocation] Skipping location refresh for demo mode.")
+            return null
+        }
+        return try {
+            val service = HomeyCompanionApiClient.create(homeyId = targetId, debug = BuildConfig.DEBUG)
+            val loc = service.getLocation()
+            storage.saveHomeLocation(loc.latitude, loc.longitude, targetId)
+            Log.d(TAG, "Refreshed home location for $targetId: (lat=***, lng=***)")
+
+            try {
+                val geofenceConfig = service.getGeofenceConfig()
+                storage.saveGeofenceDeviceIds(geofenceConfig.deviceIds, targetId)
+                Log.d(TAG, "Refreshed geofence barrier devices for $targetId: ${geofenceConfig.deviceIds}")
+            } catch (cfgErr: Exception) {
+                Log.w(TAG, "Could not fetch geofence config: ${cfgErr.message}")
+            }
+
+            Pair(loc.latitude, loc.longitude)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to refresh home location: ${e.message}", e)
+            null
+        }
     }
 }

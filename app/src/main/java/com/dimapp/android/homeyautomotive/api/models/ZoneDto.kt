@@ -15,6 +15,6 @@ import com.google.gson.annotations.SerializedName
 data class ZoneDto(
     @SerializedName("id") val id: String,
     @SerializedName("name") val name: String,
-    @SerializedName("parent") val parent: String?,
-    @SerializedName("sortIndex") val sortIndex: Int?
+    @SerializedName("parent") val parent: String? = null,
+    @SerializedName("sortIndex") val sortIndex: Int? = null
 )

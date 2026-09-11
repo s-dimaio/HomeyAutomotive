@@ -1,5 +1,6 @@
 package com.dimapp.android.homeyautomotive.api
 
+import com.google.gson.annotations.SerializedName
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -13,7 +14,9 @@ import retrofit2.http.Query
  * @property sessionId A 64-character hex string generated with [java.security.SecureRandom]
  *                     by the AAOS app. Used as a unique, unguessable session identifier.
  */
-data class StartAuthRequest(val sessionId: String)
+data class StartAuthRequest(
+    @SerializedName("sessionId") val sessionId: String
+)
 
 /**
  * Response body from `POST /auth/start`.
@@ -21,7 +24,9 @@ data class StartAuthRequest(val sessionId: String)
  * @property authUrl The Athom authorization URL (with `redirect_uri=callback.athom.com/...`)
  *                   to be displayed as a QR code on the car screen.
  */
-data class StartAuthResponse(val authUrl: String)
+data class StartAuthResponse(
+    @SerializedName("authUrl") val authUrl: String
+)
 
 /**
  * Response body from `GET /auth/poll`.
@@ -30,8 +35,23 @@ data class StartAuthResponse(val authUrl: String)
  * @property token    Token payload, present only when [status] is `"complete"`.
  */
 data class PollAuthResponse(
-    val status: String,
-    val token: CompanionToken? = null,
+    @SerializedName("status") val status: String,
+    @SerializedName("token") val token: CompanionToken? = null,
+)
+
+/**
+ * Geographical coordinates of the Homey hub.
+ */
+data class HomeLocationDto(
+    @SerializedName("latitude") val latitude: Double,
+    @SerializedName("longitude") val longitude: Double
+)
+
+/**
+ * Barrier device IDs configured for near-home proximity notifications.
+ */
+data class GeofenceConfigDto(
+    @SerializedName("deviceIds") val deviceIds: List<String> = emptyList()
 )
 
 /**
@@ -45,33 +65,35 @@ data class PollAuthResponse(
  * @property homey_name          The Hub display name.
  * @property homey_api_url       The Hub API URL.
  * @property athom_refresh_token The refresh secret for silent token rotation.
- * @property user                The user profile fetched during the OAuth2 exchange.
+ * @property user                The user profile payload.
+ * @property location            Geographical coordinates of the Homey hub.
  */
 data class CompanionToken(
-    val session_token: String,
-    val homey_id: String?,
-    val homey_name: String?,
-    val homey_api_url: String?,
-    val athom_refresh_token: String?,
-    val user: UserPayload?
+    @SerializedName("session_token") val session_token: String,
+    @SerializedName("homey_id") val homey_id: String?,
+    @SerializedName("homey_name") val homey_name: String?,
+    @SerializedName("homey_api_url") val homey_api_url: String?,
+    @SerializedName("athom_refresh_token") val athom_refresh_token: String?,
+    @SerializedName("user") val user: UserPayload?,
+    @SerializedName("location") val location: HomeLocationDto? = null
 )
 
 /**
  * User profile payload from the companion app.
  */
 data class UserPayload(
-    val id: String?,
-    val name: String?,
-    val email: String?
+    @SerializedName("id") val id: String?,
+    @SerializedName("name") val name: String?,
+    @SerializedName("email") val email: String?
 )
 
 /**
  * Generic Homey hub payload used locally to represent saved hubs.
  */
 data class HomeyPayload(
-    val id: String,
-    val name: String,
-    val api_url: String
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("api_url") val api_url: String
 )
 
 /**
@@ -79,7 +101,9 @@ data class HomeyPayload(
  *
  * @property athom_refresh_token The refresh token obtained previously from the Athom Cloud.
  */
-data class RefreshAuthRequest(val athom_refresh_token: String)
+data class RefreshAuthRequest(
+    @SerializedName("athom_refresh_token") val athom_refresh_token: String
+)
 
 /**
  * Response body from `POST /auth/refresh`.
@@ -88,8 +112,8 @@ data class RefreshAuthRequest(val athom_refresh_token: String)
  * @property athom_refresh_token The new refresh token to use for the next rotation.
  */
 data class RefreshAuthResponse(
-    val session_token: String,
-    val athom_refresh_token: String
+    @SerializedName("session_token") val session_token: String,
+    @SerializedName("athom_refresh_token") val athom_refresh_token: String
 )
 
 // ── Retrofit Service ──────────────────────────────────────────────────────────
@@ -143,4 +167,22 @@ interface HomeyCompanionApiService {
      */
     @POST("auth/refresh")
     suspend fun refreshAuth(@Body body: RefreshAuthRequest): RefreshAuthResponse
+
+    /**
+     * Retrieves the home coordinates configured on the Homey Pro hub.
+     *
+     * @public
+     * @return [HomeLocationDto] containing latitude and longitude.
+     */
+    @GET("location")
+    suspend fun getLocation(): HomeLocationDto
+
+    /**
+     * Retrieves the list of barrier device IDs configured for proximity alerts.
+     *
+     * @public
+     * @return [GeofenceConfigDto] containing configured device IDs.
+     */
+    @GET("geofence")
+    suspend fun getGeofenceConfig(): GeofenceConfigDto
 }

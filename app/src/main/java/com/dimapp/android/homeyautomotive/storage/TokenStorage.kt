@@ -6,6 +6,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import com.google.gson.reflect.TypeToken
 
 private const val PREFS_FILE_NAME = "homey_secure_prefs"
@@ -27,14 +28,26 @@ private const val KEY_HOME_SOURCE       = "home_source"
 private const val KEY_HOME_DASHBOARD_ID = "home_dashboard_id"
 private const val KEY_SYNC_INTERVAL     = "homey_sync_interval"
 
+// Geofence & Proactive alerts preferences
+private const val KEY_HOME_LAT            = "home_lat"
+private const val KEY_HOME_LNG            = "home_lng"
+private const val KEY_GEOFENCE_ENABLED    = "geofence_enabled"
+private const val KEY_GEOFENCE_AUTO_CLOSE = "geofence_auto_close"
+private const val KEY_GEOFENCE_RADIUS     = "geofence_radius"
+private const val KEY_LAST_FENCE_EVENT    = "last_fence_event"
+private const val KEY_GEOFENCE_BARRIER_IDS = "geofence_barrier_ids"
+
+// Demo mode
+private const val KEY_IS_DEMO_MODE        = "is_demo_mode"
+
 /**
  * Entry for a single authenticated Homey hub.
  */
 data class HubTokenEntry(
-    val sessionToken: String,
-    val refreshSecret: String,
-    val name: String,
-    val apiUrl: String
+    @SerializedName("sessionToken") val sessionToken: String? = null,
+    @SerializedName("refreshSecret") val refreshSecret: String? = null,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("apiUrl") val apiUrl: String? = null
 )
 
 /** Possible sources for the Home tab device list. */
@@ -97,6 +110,13 @@ class TokenStorage(private val context: Context) {
             .remove(KEY_ACTIVE_HOMEY_API_URL)
             .remove(KEY_OAUTH_STATE)
             .remove(KEY_USER_NAME)
+            .remove(KEY_IS_DEMO_MODE)
+            .remove("${KEY_HOME_LAT}_demo")
+            .remove("${KEY_HOME_LNG}_demo")
+            .remove("${KEY_HOME_LAT}_default")
+            .remove("${KEY_HOME_LNG}_default")
+            .remove(KEY_HOME_LAT)
+            .remove(KEY_HOME_LNG)
             .apply()
     }
 
@@ -109,7 +129,8 @@ class TokenStorage(private val context: Context) {
         val json = prefs.getString(KEY_HUB_TOKENS, null) ?: return emptyMap()
         val type = object : TypeToken<Map<String, HubTokenEntry>>() {}.type
         return try {
-            gson.fromJson(json, type) ?: emptyMap()
+            val map: Map<String, HubTokenEntry>? = gson.fromJson(json, type)
+            map?.filterValues { it.sessionToken != null && it.name != null && it.apiUrl != null } ?: emptyMap()
         } catch (e: Exception) {
             emptyMap()
         }
@@ -150,13 +171,25 @@ class TokenStorage(private val context: Context) {
         val tokensMap = getAllHubTokens().toMutableMap()
         tokensMap.remove(homeyId)
 
+        val editor = prefs.edit()
+        editor.remove("${KEY_HOME_LAT}_$homeyId")
+        editor.remove("${KEY_HOME_LNG}_$homeyId")
+        editor.remove("${KEY_GEOFENCE_BARRIER_IDS}_$homeyId")
+        editor.remove("${KEY_HOME_SOURCE}_$homeyId")
+        editor.remove("${KEY_HOME_DASHBOARD_ID}_$homeyId")
+
+        if (homeyId == "demo") {
+            editor.remove(KEY_IS_DEMO_MODE)
+        }
+
         if (tokensMap.isEmpty()) {
+            editor.apply()
             clearAllAuth()
             return false
         }
 
         val wasActive = getSelectedHomeyId() == homeyId
-        val editor = prefs.edit().putString(KEY_HUB_TOKENS, gson.toJson(tokensMap))
+        editor.putString(KEY_HUB_TOKENS, gson.toJson(tokensMap))
 
         if (wasActive) {
             // Auto-switch to the first remaining hub
@@ -254,12 +287,14 @@ class TokenStorage(private val context: Context) {
     fun updateActiveHubTokens(newSessionToken: String, newRefreshSecret: String) {
         val activeId = getSelectedHomeyId() ?: return
         val entry = getHubToken(activeId) ?: return
+        val name = entry.name ?: getSelectedHomeyName() ?: return
+        val apiUrl = entry.apiUrl ?: getSelectedHomeyApiUrl() ?: return
         saveHubToken(
             homeyId = activeId,
-            name = entry.name,
+            name = name,
             sessionToken = newSessionToken,
             refreshSecret = newRefreshSecret,
-            apiUrl = entry.apiUrl,
+            apiUrl = apiUrl,
             saveAsActive = true
         )
     }
@@ -350,6 +385,159 @@ class TokenStorage(private val context: Context) {
      * @example val interval = storage.getSyncInterval()
      */
     fun getSyncInterval(): Int = prefs.getInt(KEY_SYNC_INTERVAL, 5)
+
+    // ── Public Methods — Geofencing ──────────────────────────────────────────
+
+    /**
+     * Saves the Homey hub geographical coordinates for geofence registration.
+     */
+    fun saveHomeLocation(lat: Double, lng: Double, hubId: String? = null) {
+        val targetHub = hubId ?: getSelectedHomeyId() ?: return
+        if (targetHub == "demo") return
+        prefs.edit()
+            .putString("${KEY_HOME_LAT}_$targetHub", lat.toString())
+            .putString("${KEY_HOME_LNG}_$targetHub", lng.toString())
+            .apply()
+    }
+
+    /**
+     * Retrieves the saved Homey hub geographical coordinates.
+     * Always returns null for demo mode to ensure no real or mock home coordinates are used.
+     */
+    fun getHomeLocation(hubId: String? = null): Pair<Double, Double>? {
+        if (hubId == "demo" || (hubId == null && isDemoMode())) return null
+        val targetHub = hubId ?: getSelectedHomeyId() ?: return null
+        if (targetHub == "demo") return null
+        val latStr = prefs.getString("${KEY_HOME_LAT}_$targetHub", null)
+        val lngStr = prefs.getString("${KEY_HOME_LNG}_$targetHub", null)
+        val lat = latStr?.toDoubleOrNull() ?: return null
+        val lng = lngStr?.toDoubleOrNull() ?: return null
+        return Pair(lat, lng)
+    }
+
+    /**
+     * Checks if geofencing alerts are globally enabled.
+     */
+    fun isGeofenceEnabled(): Boolean = prefs.getBoolean(KEY_GEOFENCE_ENABLED, true)
+
+    /**
+     * Sets whether geofencing alerts are enabled.
+     */
+    fun setGeofenceEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_GEOFENCE_ENABLED, enabled).apply()
+    }
+
+    /**
+     * Checks if automatic closure of barriers on departure is enabled.
+     * Currently forced to false as automated actions will be handled via Homey Flow triggers.
+     */
+    fun isGeofenceAutoCloseEnabled(): Boolean = false
+
+    /**
+     * Sets whether automatic closure of barriers on departure is enabled.
+     */
+    fun setGeofenceAutoCloseEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_GEOFENCE_AUTO_CLOSE, enabled).apply()
+    }
+
+    /**
+     * Retrieves the configured geofence radius in meters (default: 300m).
+     */
+    fun getGeofenceRadius(): Float = prefs.getFloat(KEY_GEOFENCE_RADIUS, 300f)
+
+    /**
+     * Sets the geofence radius in meters.
+     */
+    fun setGeofenceRadius(radius: Float) {
+        prefs.edit().putFloat(KEY_GEOFENCE_RADIUS, radius).apply()
+    }
+
+    /**
+     * Records a log stamp for the last detected geofence event.
+     */
+    fun setLastFenceEvent(eventDescription: String) {
+        prefs.edit().putString(KEY_LAST_FENCE_EVENT, eventDescription).apply()
+    }
+
+    /**
+     * Retrieves the last recorded geofence event description.
+     */
+    fun getLastFenceEvent(): String? = prefs.getString(KEY_LAST_FENCE_EVENT, null)
+
+    /**
+     * Saves the list of barrier device IDs configured for proximity alerts.
+     *
+     * @public
+     * @param ids List of device IDs selected by the user in companion app.
+     * @param hubId Optional target hub ID, defaults to currently active hub.
+     */
+    fun saveGeofenceDeviceIds(ids: List<String>, hubId: String? = null) {
+        val targetHub = hubId ?: getSelectedHomeyId() ?: return
+        prefs.edit()
+            .putStringSet("${KEY_GEOFENCE_BARRIER_IDS}_$targetHub", ids.toSet())
+            .apply()
+    }
+
+    /**
+     * Retrieves the list of barrier device IDs configured for proximity alerts.
+     *
+     * @public
+     * @param hubId Optional target hub ID, defaults to currently active hub.
+     * @return List of configured barrier device IDs, or empty list if none selected.
+     */
+    fun getGeofenceDeviceIds(hubId: String? = null): List<String> {
+        val targetHub = hubId ?: getSelectedHomeyId() ?: return emptyList()
+        val set = prefs.getStringSet("${KEY_GEOFENCE_BARRIER_IDS}_$targetHub", null)
+        return set?.toList() ?: emptyList()
+    }
+
+    // ── Public Methods — Demo Mode ───────────────────────────────────────────
+
+    /**
+     * Checks whether the app is currently running in mock Demo Mode.
+     * Evaluates dynamically based on whether the active hub is "demo".
+     *
+     * @return True if in demo mode.
+     */
+    fun isDemoMode(): Boolean = getSelectedHomeyId() == "demo"
+
+    /**
+     * Activates Demo Mode, registering a mock hub with sample configuration.
+     * Note: Home coordinates are intentionally NOT configured in demo mode.
+     */
+    fun enableDemoMode() {
+        prefs.edit()
+            .putBoolean(KEY_IS_DEMO_MODE, true)
+            .remove("${KEY_HOME_LAT}_demo")
+            .remove("${KEY_HOME_LNG}_demo")
+            .remove("${KEY_HOME_LAT}_default")
+            .remove("${KEY_HOME_LNG}_default")
+            .remove(KEY_HOME_LAT)
+            .remove(KEY_HOME_LNG)
+            .apply()
+
+        saveHubToken(
+            homeyId = "demo",
+            name = "Homey Demo",
+            sessionToken = "demo_session_token",
+            refreshSecret = "demo_refresh_secret",
+            apiUrl = "https://demo.connect.athom.com",
+            saveAsActive = true
+        )
+        saveGeofenceDeviceIds(listOf("demo_front_door", "demo_main_garage"), "demo")
+    }
+
+    /**
+     * Deactivates Demo Mode and removes the mock hub from storage.
+     */
+    fun clearDemoMode() {
+        prefs.edit()
+            .remove(KEY_IS_DEMO_MODE)
+            .remove("${KEY_HOME_LAT}_demo")
+            .remove("${KEY_HOME_LNG}_demo")
+            .apply()
+        removeHubToken("demo")
+    }
 
     /**
      * Clears all stored data (full factory reset).

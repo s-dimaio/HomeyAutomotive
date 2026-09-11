@@ -15,12 +15,10 @@
 }
 # Keep all Retrofit service interfaces defined in the app.
 -keep interface com.dimapp.android.homeyautomotive.api.** { *; }
--keep interface com.dimapp.android.homeyautomotive.api.HomeyApiService { *; }
--keep interface com.dimapp.android.homeyautomotive.api.HomeyCompanionApiService { *; }
 
 # ── Gson / JSON models ────────────────────────────────────────────────────────
 # Gson uses reflection to read/write field names on data classes.
-# Without these rules R8 renames all fields and JSON deserialization silently fails.
+# Without these rules R8 renames fields and JSON deserialization silently fails or crashes.
 -keepattributes *Annotation*
 -keep class sun.misc.Unsafe { *; }
 -keep class com.google.gson.** { *; }
@@ -30,19 +28,17 @@
 -keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
 -keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
 
-# Keep all DTO / data model classes in the api package.
--keep class com.dimapp.android.homeyautomotive.api.StartAuthRequest { *; }
--keep class com.dimapp.android.homeyautomotive.api.StartAuthResponse { *; }
--keep class com.dimapp.android.homeyautomotive.api.PollAuthResponse { *; }
--keep class com.dimapp.android.homeyautomotive.api.CompanionToken { *; }
--keep class com.dimapp.android.homeyautomotive.api.UserPayload { *; }
--keep class com.dimapp.android.homeyautomotive.api.HomeyPayload { *; }
--keep class com.dimapp.android.homeyautomotive.api.RefreshAuthRequest { *; }
--keep class com.dimapp.android.homeyautomotive.api.RefreshAuthResponse { *; }
+# Keep all class members annotated with @SerializedName
+-keepclassmembers class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
 
-# Keep all other model/data classes that may be serialized/deserialized.
--keep class com.dimapp.android.homeyautomotive.model.** { *; }
+# Keep all DTO, storage, and model packages in their entirety
+-keep class com.dimapp.android.homeyautomotive.api.** { *; }
 -keep class com.dimapp.android.homeyautomotive.api.models.** { *; }
+-keep class com.dimapp.android.homeyautomotive.model.** { *; }
+-keep class com.dimapp.android.homeyautomotive.repository.models.** { *; }
+-keep class com.dimapp.android.homeyautomotive.storage.** { *; }
 
 # ── OkHttp ────────────────────────────────────────────────────────────────────
 -dontwarn okhttp3.**
@@ -65,3 +61,24 @@
 -keep class kotlin.Metadata { *; }
 -dontwarn kotlin.**
 -dontwarn kotlin.reflect.jvm.internal.**
+
+# ── Car App Library (CAL) ─────────────────────────────────────────────────────
+-keep class androidx.car.app.** { *; }
+-keep interface androidx.car.app.** { *; }
+-keep class com.dimapp.android.homeyautomotive.HomeyCarAppService { *; }
+-keep class com.dimapp.android.homeyautomotive.screens.** { *; }
+
+# ── Notifications & CarAppExtender ────────────────────────────────────────────
+-keep class androidx.core.app.NotificationCompat** { *; }
+-keep class androidx.core.app.NotificationManagerCompat { *; }
+-keep class androidx.car.app.notification.** { *; }
+
+# ── WorkManager, Geofencing & Location ────────────────────────────────────────
+-keep class androidx.work.** { *; }
+-keep class * extends androidx.work.ListenableWorker { *; }
+-keepclassmembers class * extends androidx.work.ListenableWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}
+-keep class com.google.android.gms.location.** { *; }
+-keep class com.dimapp.android.homeyautomotive.geofence.** { *; }
+-keep class * extends android.content.BroadcastReceiver { *; }

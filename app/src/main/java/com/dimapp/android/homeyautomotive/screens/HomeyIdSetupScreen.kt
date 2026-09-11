@@ -10,6 +10,7 @@ import androidx.car.app.model.Template
 import androidx.car.app.model.signin.InputSignInMethod
 import androidx.car.app.model.signin.SignInTemplate
 import com.dimapp.android.homeyautomotive.R
+import com.dimapp.android.homeyautomotive.core.DependencyManager
 
 private const val TAG = "HomeyIdSetupScreen"
 
@@ -121,6 +122,16 @@ class HomeyIdSetupScreen(
             Log.w(TAG, "User submitted empty Homey ID — showing error.")
             errorMessage = carContext.getString(R.string.homey_id_setup_error_empty)
             invalidate()
+            return
+        }
+
+        // Demo Mode bypass for Google Play Review & offline inspection
+        if (cleanedId.equals("demo", ignoreCase = true)) {
+            Log.d(TAG, "Demo ID confirmed — activating demo mode and redirecting to MainTabScreen.")
+            val storage = DependencyManager.getTokenStorage(carContext)
+            storage.enableDemoMode()
+            screenManager.popToRoot()
+            screenManager.push(MainTabScreen(carContext))
             return
         }
 

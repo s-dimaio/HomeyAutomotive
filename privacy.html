@@ -115,7 +115,7 @@
 <body>
     <div class="container">
         <header>
-            <p class="last-updated">Last Updated: April 26, 2026</p>
+            <p class="last-updated">Last Updated: September 11, 2026</p>
             <h1>Privacy Policy</h1>
             <p>Homey for Android Automotive</p>
         </header>
@@ -129,31 +129,40 @@
 
         <section>
             <h2>2. Information Collection</h2>
-            <p>We believe in data minimization. The App is designed to operate without collecting, storing, or
-                transmitting any of your personal identification data to our own servers.</p>
+            <p>We believe in data minimization. The App is designed to operate without transmitting any of your personal identification data to developer-owned servers.</p>
             <ul>
-                <li><strong>Personal Data:</strong> We do not collect names, email addresses, phone numbers, or location
-                    data.</li>
-                <li><strong>Authentication:</strong> All authentication is handled through the official <strong>Athom
-                        B.V. (Homey)</strong> OAuth2 system. The App never sees or stores your Homey password.</li>
-                <li><strong>Local Storage:</strong> To function, the App securely stores a temporary access token on
-                    your vehicle's local storage. This token is used exclusively to communicate with the Homey API and
-                    can be revoked at any time.</li>
+                <li><strong>Personal Identification Data:</strong> We do not collect personal identifiers such as names, email addresses, or phone numbers.</li>
+                <li><strong>Location Data (Precise &amp; Background Location):</strong> To support automated smart home geofencing features, the App accesses your vehicle's precise and approximate location data (GPS coordinates). When you enable the "Smart Alerts" feature, the App accesses this location data in the background (even when the App is closed or not in use).</li>
+                <li><strong>Authentication:</strong> All authentication is handled through the official <strong>Athom B.V. (Homey)</strong> OAuth2 system. The App never sees or stores your Homey password.</li>
+                <li><strong>Local Storage:</strong> To function, the App securely stores a temporary access token and your Homey hub's approximate home coordinates on your vehicle's encrypted local storage. This data is used exclusively to communicate with the Homey Web API and manage local geofences, and can be cleared at any time.</li>
             </ul>
         </section>
 
         <section>
-            <h2>3. Information Usage</h2>
+            <h2>3. Location Data Access, Usage &amp; Background Collection</h2>
+            <p>The App requests access to location data (including <code>ACCESS_FINE_LOCATION</code>, <code>ACCESS_COARSE_LOCATION</code>, and <code>ACCESS_BACKGROUND_LOCATION</code>) strictly to enable safety and convenience geofencing automations for your vehicle:</p>
+            <ul>
+                <li><strong>Departure Security Warnings:</strong> When your vehicle exits your home geofence perimeter, the App verifies the status of your doors, gates, and garage doors. If an access point was left open, it displays an in-car heads-up notification so you can secure your home.</li>
+                <li><strong>Arrival Access Prompts:</strong> When your vehicle approaches your home geofence perimeter, the App displays a timely in-car notification with a one-tap shortcut allowing you to open your gate or garage door before pulling into the driveway.</li>
+                <li><strong>Homey Companion App &amp; Automations:</strong> Geofence transition events (entering or exiting your home perimeter) communicate directly with your personal Homey Pro hub to query device states, trigger user-configured Homey Flows (such as arrival or departure routines), and automate entry points. Your raw GPS coordinates and driving routes are processed strictly on your vehicle and are <strong>never transmitted to your Homey hub or any external servers</strong>.</li>
+                <li><strong>Background Location Usage:</strong> To reliably detect entry and exit events while you are driving, the vehicle's location must be monitored even when the App is closed or not actively open on the infotainment display (e.g., while navigation, media, or other car applications are running in the foreground).</li>
+                <li><strong>Local Processing &amp; No External Tracking:</strong> All geofence boundary calculations occur locally on your vehicle via Android operating system location services. Location data is <strong>never uploaded to developer servers, never sold, never shared with third parties, and never used for advertising, marketing, analytics, or behavioral tracking</strong>.</li>
+                <li><strong>User Choice &amp; Control:</strong> Location access is completely optional. You can grant, deny, or revoke location permissions at any time through the vehicle's system settings (<em>Settings &rarr; Apps &rarr; Homey &rarr; Permissions &rarr; Location</em>) or directly in the App's settings screen. If location permissions are declined, the App remains fully functional for all manual device controls and dashboard monitoring.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>4. Information Usage</h2>
             <p>Any information accessed by the App is used strictly for the following purposes:</p>
             <ul>
-                <li>To display the status of your smart home devices (e.g., lights, locks, sensors) on your car's
-                    dashboard.</li>
+                <li>To display the status of your smart home devices (e.g., lights, locks, sensors) on your car's dashboard.</li>
                 <li>To allow you to execute Homey Flows and control devices directly from the infotainment system.</li>
+                <li>To trigger smart geofencing routines and alerts (departure safety checks, arrival gate/garage prompts, and in-home arrival/departure flow automations) as detailed in Section 3.</li>
             </ul>
         </section>
 
         <section>
-            <h2>4. Third-Party Services</h2>
+            <h2>5. Third-Party Services</h2>
             <p>The App interacts with the <strong>Homey Web API</strong> provided by Athom B.V. When you use the App,
                 your device data is processed by Athom according to their own privacy standards. We encourage you to
                 review the official <a href="https://legal.athom.com/?document=privacy-policy" target="_blank">Homey
@@ -161,20 +170,20 @@
         </section>
 
         <section>
-            <h2>5. Data Security</h2>
+            <h2>6. Data Security</h2>
             <p>We take the security of your information seriously. Access tokens are stored locally on your device using
                 standard Android security features to prevent unauthorized access. Since this is a server-less
                 application, no data is stored or managed on any external servers controlled by the developer.</p>
         </section>
 
         <section>
-            <h2>6. Changes to This Policy</h2>
+            <h2>7. Changes to This Policy</h2>
             <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new
                 Privacy Policy on this page.</p>
         </section>
 
         <section>
-            <h2>7. Contact Us</h2>
+            <h2>8. Contact Us</h2>
             <p>If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us at:</p>
             <p><strong>Email:</strong> <a href="mailto:simone.dimaio77@gmail.com">simone.dimaio77@gmail.com</a></p>
         </section>

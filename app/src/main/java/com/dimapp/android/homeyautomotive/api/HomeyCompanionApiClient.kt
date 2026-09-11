@@ -33,7 +33,7 @@ object HomeyCompanionApiClient {
 
     // ── Private constants ──────────────────────────────────────────────────────
 
-    private const val TIMEOUT_SECONDS = 15L
+    private const val TIMEOUT_SECONDS = 30L
 
     /** App ID of the Homey Companion App as registered in the Homey App Store. */
     private const val COMPANION_APP_ID = "com.dimapp.aaos"

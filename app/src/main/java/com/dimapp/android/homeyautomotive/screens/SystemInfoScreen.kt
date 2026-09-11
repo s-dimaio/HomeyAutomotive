@@ -83,6 +83,14 @@ class SystemInfoScreen(carContext: CarContext) : Screen(carContext) {
                 .build()
         )
 
+        // 5. Privacy Policy
+        listBuilder.addItem(
+            Row.Builder()
+                .setTitle(carContext.getString(R.string.info_privacy_policy_title))
+                .addText(carContext.getString(R.string.info_privacy_policy_url))
+                .build()
+        )
+
         val header = Header.Builder()
             .setTitle(carContext.getString(R.string.info_header_title))
             .setStartHeaderAction(Action.BACK)

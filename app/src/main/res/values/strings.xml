@@ -89,6 +89,8 @@
     <string name="info_host_value">Package: %1$s\nVersion: %2$s</string>
     <string name="info_app_version_label">App Version</string>
     <string name="info_app_version_value">%1$s (%2$d)</string>
+    <string name="info_privacy_policy_title">Privacy Policy</string>
+    <string name="info_privacy_policy_url">https://s-dimaio.github.io/HomeyAutomotive/privacy.html</string>
 
     <!-- OAuthSignInScreen -->
     <string name="homey_companion_app_name">Android Automotive</string>
@@ -109,11 +111,27 @@
     <!-- HomeyIdSetupScreen -->
     <string name="homey_id_setup_title">Homey Account</string>
     <string name="homey_id_setup_instructions">Enter your Homey ID</string>
-    <string name="homey_id_setup_additional">Homey app: Settings -> General -> Homey ID</string>
+    <string name="homey_id_setup_additional">Homey app: Settings -> General -> Homey ID (Enter \"demo\" for review)</string>
     <string name="homey_id_setup_hint">Homey ID (e.g. abc123)</string>
     <string name="homey_id_setup_confirm">Confirm</string>
     <string name="homey_id_setup_clear">Clear</string>
     <string name="homey_id_setup_error_empty">Homey ID cannot be empty</string>
+
+    <!-- Demo Mode -->
+    <string name="demo_hub_name">Homey Demo</string>
+    <string name="demo_mode_active_badge">Demo Mode</string>
+    <string name="settings_status_demo">Connected to %s (Demo Mode)</string>
+    <string name="settings_exit_demo">Exit Demo Mode</string>
+    <string name="settings_exit_demo_desc">Return to Homey ID login</string>
+    <string name="demo_device_living_light">Living Room Light</string>
+    <string name="demo_device_kitchen_light">Kitchen Spotlight</string>
+    <string name="demo_device_garden_light">Garden Light</string>
+    <string name="demo_device_front_door">Front Door</string>
+    <string name="demo_device_main_garage">Main Garage</string>
+    <string name="demo_zone_ground_floor">Ground Floor</string>
+    <string name="demo_zone_outside">Outside</string>
+    <string name="demo_flow_leaving_home">Leaving Home</string>
+    <string name="demo_flow_arriving_home">Arriving Home</string>
 
     <!-- HomeySelectionScreen -->
     <string name="homey_selection_title">Homey Account</string>
@@ -133,4 +151,56 @@
     <string name="settings_status_oauth_ok">Connected to %s</string>
     <string name="settings_status_oauth_missing">Not connected</string>
     <string name="settings_sync_interval_seconds">%1$d seconds</string>
+
+    <!-- Geofencing & Smart Alerts -->
+    <string name="geofence_channel_name">Home Proximity Alerts</string>
+    <string name="geofence_channel_desc">Notifications when arriving or leaving home</string>
+    <string name="geofence_notif_departure_title">You left home</string>
+    <string name="geofence_notif_departure_single">%s is still open</string>
+    <string name="geofence_notif_departure_multi">%d barriers are still open</string>
+    <string name="geofence_notif_arrival_title">Near home</string>
+    <string name="geofence_notif_arrival_single">%s is closed</string>
+    <string name="geofence_notif_arrival_multi">%d barriers are closed</string>
+    <string name="geofence_action_close">Close %s</string>
+    <string name="geofence_action_lock">Lock %s</string>
+    <string name="geofence_action_open">Open %s</string>
+    <string name="geofence_action_unlock">Unlock %s</string>
+    <string name="geofence_action_close_all">Close all</string>
+    <string name="geofence_action_open_all">Open all</string>
+    <string name="geofence_notif_auto_closed">Closed automatically: %s &#10003;</string>
+    <string name="geofence_action_done">%s &#10003;</string>
+    <string name="geofence_action_failed">%s failed</string>
+    <string name="geofence_action_already_done">%s already done</string>
+
+    <!-- PermissionScreen (Google Play Compliant Prominent Disclosure) -->
+    <string name="permission_screen_title">Location &amp; Smart Alerts</string>
+    <string name="permission_step0_message">Homey collects location data to enable smart geofencing features, including departure warnings if a garage door or smart lock is left open and arrival prompts to open gates or doors, even when the app is closed or not in use.\n\nUsage &amp; Privacy:\n• Your precise location is accessed in real time solely to detect proximity to your home geofence.\n• All location processing occurs locally on your vehicle.\n• Location data is never used for advertising, never sold, and never shared with third parties or stored on external servers.\n\nThis feature is completely optional. You can decline and continue using all other features of Homey normally.</string>
+    <string name="permission_step1_message">To deliver automated arrival and departure alerts while driving, Homey requires background location access.\n\nIn the next system dialog, please select \"Allow all the time\". This allows Homey to detect your home boundary even when the app is closed or not in use.\n\nYour location data is processed strictly on the vehicle and is never shared or stored.</string>
+    <string name="permission_granted_message">All set! Background geofence alerts are now active.</string>
+    <string name="permission_foreground_only_message">Foreground location granted. Smart Alerts are active while Homey is open on your car display.\n\nTo receive alerts when the app is closed, set location to \"Allow all the time\" in vehicle Settings → Apps → Homey.</string>
+    <string name="permission_denied_message">Location access was declined. Proximity alerts cannot be activated without location permission. You can enable it at any time in vehicle Settings → Apps → Homey.</string>
+    <string name="permission_btn_enable">Agree &amp; Continue</string>
+    <string name="permission_btn_allow_always">Agree &amp; Continue</string>
+    <string name="permission_btn_not_now">No thanks</string>
+
+    <!-- Settings Geofence Section -->
+    <string name="settings_geofence_section">Geofence &amp; Smart Alerts</string>
+    <string name="settings_geofence_status_title">Geofence Alerts</string>
+    <string name="settings_geofence_status_active">Active (%1$.0fm radius)</string>
+    <string name="settings_geofence_status_foreground_only">Active (Foreground only)</string>
+    <string name="settings_geofence_status_disabled">Disabled</string>
+    <string name="settings_geofence_status_no_location">Home coordinates not set</string>
+    <string name="settings_geofence_status_no_perm">Permissions required</string>
+    <string name="settings_geofence_upgrade_bg_title">Enable Background Alerts</string>
+    <string name="settings_geofence_upgrade_bg_desc">Allow location all the time to receive alerts when app is closed</string>
+    <string name="settings_geofence_auto_close_title">Auto-Close on Departure</string>
+    <string name="settings_geofence_auto_close_desc">Automatically close open barriers when leaving home</string>
+    <string name="settings_geofence_refresh_coords">Refresh Coordinates</string>
+    <string name="settings_geofence_refresh_coords_desc">Fetch updated location from Homey</string>
+    <string name="settings_geofence_coords_format">Lat: %1$.6f, Lng: %2$.6f</string>
+    <string name="settings_geofence_coords_success">Coordinates updated successfully</string>
+    <string name="settings_geofence_coords_error">Could not retrieve coordinates from Homey</string>
+    <string name="settings_geofence_coords_not_set">Not configured</string>
+    <string name="settings_demo_coords_unsupported">Updating home coordinates requires a physical Homey hub.</string>
+    <string name="settings_geofence_permissions_btn">Grant Permissions</string>
 </resources>

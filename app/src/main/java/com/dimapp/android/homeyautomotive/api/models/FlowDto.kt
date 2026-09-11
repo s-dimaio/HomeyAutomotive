@@ -17,7 +17,7 @@ import com.google.gson.annotations.SerializedName
 data class FlowDto(
     @SerializedName("id") val id: String,
     @SerializedName("name") val name: String,
-    @SerializedName("enabled") val enabled: Boolean?,
-    @SerializedName("triggerable") val triggerable: Boolean?,
-    @SerializedName("folder") val folder: String?
+    @SerializedName("enabled") val enabled: Boolean? = true,
+    @SerializedName("triggerable") val triggerable: Boolean? = false,
+    @SerializedName("folder") val folder: String? = null
 )

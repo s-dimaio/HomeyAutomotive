@@ -105,7 +105,7 @@ class HomeySelectionScreen(
 
         homeys.forEach { homey ->
             val isActive = homey.id == activeId
-            val rowTitle = "${homey.name} (id: ${homey.id.take(16)}...)"
+            val rowTitle = if (homey.id == "demo") homey.name else "${homey.name} (id: ${homey.id.take(16)}...)"
             val rowSubtitle = if (isActive) carContext.getString(R.string.homey_selection_active_label) else ""
 
             val rowBuilder = Row.Builder()
@@ -172,8 +172,10 @@ class HomeySelectionScreen(
         if (isRedirecting) return
 
         val authHubs = storage.getAllHubTokens()
-        homeys = authHubs.entries.map { (id, entry) ->
-            HomeyPayload(id, entry.name, entry.apiUrl)
+        homeys = authHubs.entries.mapNotNull { (id, entry) ->
+            val name = entry.name ?: return@mapNotNull null
+            val apiUrl = entry.apiUrl ?: return@mapNotNull null
+            HomeyPayload(id, name, apiUrl)
         }
 
         Log.d(TAG, "Loaded ${homeys.size} Homey hub(s) from storage. Redirecting check...")

@@ -33,6 +33,7 @@ class DeviceRepository(
     private val cacheMutex = Mutex()
     private var cachedDevices: List<HomeyDevice>? = null
     private var cachedHubId: String? = null
+    private var demoDevices: MutableList<HomeyDevice>? = null
 
 
     /**
@@ -42,6 +43,15 @@ class DeviceRepository(
      * To force a network refresh, set [forceRefresh] to true.
      */
     suspend fun getDevices(forceRefresh: Boolean = false): HomeyResult<List<HomeyDevice>> = cacheMutex.withLock {
+        // Handle Demo Mode directly without network interaction
+        if (storage.isDemoMode()) {
+            if (demoDevices == null || forceRefresh) {
+                demoDevices = _createDemoDevices().toMutableList()
+                Log.d(TAG, "Initialized demo devices list with ${demoDevices?.size} mock devices.")
+            }
+            return HomeyResult.Success(demoDevices!!.toList())
+        }
+
         val currentHubId = storage.getSelectedHomeyId() ?: return HomeyResult.Error(context.getString(R.string.repo_error_not_configured))
         
         // 1. Check if we have valid cached data for the current hub
@@ -116,6 +126,7 @@ class DeviceRepository(
         Log.d(TAG, "Device cache invalidated.")
         cachedDevices = null
         cachedHubId = null
+        demoDevices = null
     }
 
     /**
@@ -135,6 +146,18 @@ class DeviceRepository(
         capabilityId: String,
         makeActive: Boolean
     ): HomeyResult<String> {
+        // Handle Demo Mode optimistic state toggle
+        if (storage.isDemoMode()) {
+            val list = demoDevices ?: _createDemoDevices().toMutableList()
+            val index = list.indexOfFirst { it.id == deviceId }
+            if (index != -1) {
+                list[index] = list[index].copy(isActive = makeActive)
+                demoDevices = list
+                Log.d(TAG, "Toggled demo device $deviceId to isActive=$makeActive")
+            }
+            return HomeyResult.Success(context.getString(R.string.repo_success_toggle))
+        }
+
         val service = _buildService() ?: return HomeyResult.Error(context.getString(R.string.repo_error_not_configured))
 
         val value: Any = when (capabilityId) {
@@ -302,5 +325,91 @@ class DeviceRepository(
         }
         
         return path.reversed().joinToString(" - ")
+    }
+
+    /**
+     * Creates a predefined list of mock devices for Demo Mode / Google Play Store review.
+     *
+     * @private
+     * @return List of mock [HomeyDevice] instances.
+     */
+    private fun _createDemoDevices(): List<HomeyDevice> {
+        return listOf(
+            HomeyDevice(
+                id = "demo_light_1",
+                name = context.getString(R.string.demo_device_living_light),
+                zoneName = context.getString(R.string.demo_zone_ground_floor),
+                isActive = true,
+                isAvailable = true,
+                primaryCapability = CAP_ONOFF,
+                deviceClass = "light",
+                iconUrl = null,
+                isFavorite = true,
+                isLight = true,
+                isHidden = false,
+                isGroupMember = false,
+                zoneOrder = 1
+            ),
+            HomeyDevice(
+                id = "demo_light_2",
+                name = context.getString(R.string.demo_device_kitchen_light),
+                zoneName = context.getString(R.string.demo_zone_ground_floor),
+                isActive = false,
+                isAvailable = true,
+                primaryCapability = CAP_ONOFF,
+                deviceClass = "light",
+                iconUrl = null,
+                isFavorite = true,
+                isLight = true,
+                isHidden = false,
+                isGroupMember = false,
+                zoneOrder = 1
+            ),
+            HomeyDevice(
+                id = "demo_light_3",
+                name = context.getString(R.string.demo_device_garden_light),
+                zoneName = context.getString(R.string.demo_zone_outside),
+                isActive = false,
+                isAvailable = true,
+                primaryCapability = CAP_ONOFF,
+                deviceClass = "light",
+                iconUrl = null,
+                isFavorite = false,
+                isLight = true,
+                isHidden = false,
+                isGroupMember = false,
+                zoneOrder = 2
+            ),
+            HomeyDevice(
+                id = "demo_door_1",
+                name = context.getString(R.string.demo_device_front_door),
+                zoneName = context.getString(R.string.demo_zone_ground_floor),
+                isActive = false, // false for lock = locked / closed
+                isAvailable = true,
+                primaryCapability = "locked",
+                deviceClass = "lock",
+                iconUrl = null,
+                isFavorite = true,
+                isLight = false,
+                isHidden = false,
+                isGroupMember = false,
+                zoneOrder = 1
+            ),
+            HomeyDevice(
+                id = "demo_garage_1",
+                name = context.getString(R.string.demo_device_main_garage),
+                zoneName = context.getString(R.string.demo_zone_outside),
+                isActive = false, // false for garagedoor = closed
+                isAvailable = true,
+                primaryCapability = CAP_GARAGEDOOR,
+                deviceClass = "garagedoor",
+                iconUrl = null,
+                isFavorite = true,
+                isLight = false,
+                isHidden = false,
+                isGroupMember = false,
+                zoneOrder = 2
+            )
+        )
     }
 }

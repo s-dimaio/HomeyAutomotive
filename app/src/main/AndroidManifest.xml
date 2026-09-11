@@ -5,6 +5,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Geofencing & In-Car Notifications -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <queries>
         <package android:name="com.google.android.apps.automotive.templates.host" />
         <package android:name="com.google.android.projection.gearhead" />
@@ -13,7 +20,7 @@
     <!-- Automotive features declaration -->
     <uses-feature
         android:name="android.hardware.type.automotive"
-        android:required="false" />
+        android:required="true" />
     <uses-feature
         android:name="android.hardware.wifi"
         android:required="false" />
@@ -79,6 +86,24 @@
                 <category android:name="androidx.car.app.category.IOT" />
             </intent-filter>
         </service>
+
+        <!-- Geofencing & Background Proactive Action Receivers -->
+        <receiver
+            android:name=".geofence.GeofenceReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".geofence.NotifActionReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".geofence.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

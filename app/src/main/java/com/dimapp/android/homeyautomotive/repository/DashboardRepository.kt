@@ -25,6 +25,17 @@ class DashboardRepository(
      * Returns all custom dashboards provided by the Homey AAOS Companion App.
      */
     suspend fun getDashboards(): HomeyResult<List<HomeyDashboard>> {
+        if (storage.isDemoMode()) {
+            return HomeyResult.Success(
+                listOf(
+                    HomeyDashboard(
+                        id = "demo_dashboard",
+                        name = context.getString(R.string.source_dashboard_title)
+                    )
+                )
+            )
+        }
+
         val service = _buildService() ?: return HomeyResult.Error(context.getString(R.string.repo_error_not_configured))
 
         return try {
@@ -55,6 +66,12 @@ class DashboardRepository(
      * Retrieves the set of device UUIDs that belong to a given dashboard's widgets.
      */
     suspend fun getDashboardDeviceIds(dashboardId: String): HomeyResult<Set<String>> {
+        if (storage.isDemoMode()) {
+            return HomeyResult.Success(
+                setOf("demo_light_1", "demo_light_2", "demo_door_1", "demo_garage_1")
+            )
+        }
+
         val service = _buildService() ?: return HomeyResult.Error(context.getString(R.string.repo_error_not_configured))
 
         return try {

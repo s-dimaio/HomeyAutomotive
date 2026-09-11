@@ -21,6 +21,27 @@ class FlowRepository(
      * Only flows with `triggerable = true` are included.
      */
     suspend fun getTriggerableFlows(): HomeyResult<List<FlowDto>> {
+        if (storage.isDemoMode()) {
+            return HomeyResult.Success(
+                listOf(
+                    FlowDto(
+                        id = "demo_flow_1",
+                        name = context.getString(R.string.demo_flow_leaving_home),
+                        triggerable = true,
+                        enabled = true,
+                        folder = null
+                    ),
+                    FlowDto(
+                        id = "demo_flow_2",
+                        name = context.getString(R.string.demo_flow_arriving_home),
+                        triggerable = true,
+                        enabled = true,
+                        folder = null
+                    )
+                )
+            )
+        }
+
         val service = _buildService() ?: return HomeyResult.Error(context.getString(R.string.repo_error_not_configured))
 
         return try {
@@ -43,6 +64,10 @@ class FlowRepository(
      * Triggers a Homey Flow by its UUID.
      */
     suspend fun triggerFlow(flowId: String): HomeyResult<String> {
+        if (storage.isDemoMode()) {
+            return HomeyResult.Success(context.getString(R.string.repo_success_flow))
+        }
+
         val service = _buildService() ?: return HomeyResult.Error(context.getString(R.string.repo_error_not_configured))
 
         return try {

@@ -252,6 +252,18 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
             // This is critical for the "Virtual Dashboard" which has a static ID but dynamic content.
             dashboardId?.let { dashboardDeviceIdsCache.remove(it) }
 
+            // Silently synchronize geofence configuration (home coordinates & barrier selection)
+            if (storage.isGeofenceEnabled() && !storage.isDemoMode()) {
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        val authRepo = DependencyManager.getAuthRepository(carContext)
+                        authRepo.refreshHomeLocation(hubId)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "[MainTabScreen:_loadData] Silent geofence sync failed: ${e.message}")
+                    }
+                }
+            }
+
             // Executes fetch in parallel to avoid double loading spinners
             // If force is true, we bypass the DeviceRepository cache.
             val devicesDeferred = async { deviceRepository.getDevices(forceRefresh = force) }

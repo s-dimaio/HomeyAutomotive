@@ -35,6 +35,7 @@ local.properties
 .antigravity/
 .agents/
 .antigravityignore
+.artifacts/
 
 # Project Specific
 /images/
@@ -43,3 +44,4 @@ local.properties
 scratch/
 release.ps1
 *.code-workspace
+AI_PROJECT_HANDBOOK.md

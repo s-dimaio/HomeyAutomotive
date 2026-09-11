@@ -9,14 +9,14 @@ plugins {
 
 android {
     namespace = "com.dimapp.android.homeyautomotive"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.dimapp.android.homeyautomotive"
         minSdk = 29
-        targetSdk = 35
-        versionCode = 29
-        versionName = "1.4.18"
+        targetSdk = 36
+        versionCode = 37
+        versionName = "1.5.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -79,6 +79,10 @@ dependencies {
 
     // Storage cifrato per il Personal Access Token
     implementation(libs.androidx.security.crypto)
+
+    // Location & Geofencing
+    implementation(libs.play.services.location)
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Test
     testImplementation(libs.junit)

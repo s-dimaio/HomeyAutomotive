@@ -11,6 +11,7 @@ import androidx.car.app.model.Template
 import com.dimapp.android.homeyautomotive.R
 import com.dimapp.android.homeyautomotive.api.HomeyPayload
 import com.dimapp.android.homeyautomotive.core.DependencyManager
+import com.dimapp.android.homeyautomotive.geofence.GeofenceManager
 import com.dimapp.android.homeyautomotive.storage.TokenStorage
 
 /**
@@ -32,7 +33,7 @@ class HomeyDetailScreen(
     override fun onGetTemplate(): Template {
         val statusStr = carContext.getString(if (isActive) R.string.homey_detail_active else R.string.homey_detail_inactive)
         val statusMessage = carContext.getString(R.string.homey_detail_status, statusStr)
-        val message = "ID: ${homey.id}\n$statusMessage"
+        val message = if (homey.id == "demo") statusMessage else "ID: ${homey.id}\n$statusMessage"
 
         val header = Header.Builder()
             .setTitle(homey.name)
@@ -48,6 +49,8 @@ class HomeyDetailScreen(
                     .setTitle(carContext.getString(R.string.homey_detail_select))
                     .setOnClickListener(ParkedOnlyOnClickListener.create {
                         storage.switchActiveHomey(homey.id)
+                        DependencyManager.getDeviceRepository(carContext).invalidateCache()
+                        GeofenceManager.reregisterFromStorage(carContext)
                         CarToast.makeText(
                             carContext,
                             carContext.getString(R.string.homey_selection_toast_active, homey.name),
@@ -65,6 +68,8 @@ class HomeyDetailScreen(
                 .setTitle(carContext.getString(R.string.homey_selection_disconnect_hub))
                 .setOnClickListener(ParkedOnlyOnClickListener.create {
                     storage.removeHubToken(homey.id)
+                    DependencyManager.getDeviceRepository(carContext).invalidateCache()
+                    GeofenceManager.reregisterFromStorage(carContext)
                     if (storage.getAllHubTokens().isEmpty()) {
                         screenManager.popToRoot()
                     } else {

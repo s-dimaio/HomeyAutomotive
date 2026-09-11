@@ -88,6 +88,8 @@
     <string name="info_host_value">Package: %1$s\nVersion: %2$s</string>
     <string name="info_app_version_label">Versione App</string>
     <string name="info_app_version_value">%1$s (%2$d)</string>
+    <string name="info_privacy_policy_title">Informativa sulla Privacy</string>
+    <string name="info_privacy_policy_url">https://s-dimaio.github.io/HomeyAutomotive/privacy.html</string>
 
     <!-- OAuthSignInScreen -->
     <string name="homey_companion_app_name">Android Automotive</string>
@@ -107,11 +109,27 @@
     <!-- HomeyIdSetupScreen -->
     <string name="homey_id_setup_title">Account Homey</string>
     <string name="homey_id_setup_instructions">Inserisci il tuo Homey ID</string>
-    <string name="homey_id_setup_additional">Homey app: Impostazioni -> Generali -> ID Homey</string>
+    <string name="homey_id_setup_additional">Homey app: Impostazioni -> Generali -> ID Homey (Inserisci \"demo\" per la modalità demo)</string>
     <string name="homey_id_setup_hint">Homey ID (es. abc123)</string>
     <string name="homey_id_setup_confirm">Conferma</string>
     <string name="homey_id_setup_clear">Cancella</string>
     <string name="homey_id_setup_error_empty">L\'ID Homey non può essere vuoto</string>
+
+    <!-- Demo Mode -->
+    <string name="demo_hub_name">Homey Demo</string>
+    <string name="demo_mode_active_badge">Modalità Demo</string>
+    <string name="settings_status_demo">Connesso a %s (Modalità Demo)</string>
+    <string name="settings_exit_demo">Esci dalla Modalità Demo</string>
+    <string name="settings_exit_demo_desc">Torna alla schermata di login Homey ID</string>
+    <string name="demo_device_living_light">Luce Salotto</string>
+    <string name="demo_device_kitchen_light">Faretto Cucina</string>
+    <string name="demo_device_garden_light">Luce Giardino</string>
+    <string name="demo_device_front_door">Portone Ingresso</string>
+    <string name="demo_device_main_garage">Garage Principale</string>
+    <string name="demo_zone_ground_floor">Piano Terra</string>
+    <string name="demo_zone_outside">Esterno</string>
+    <string name="demo_flow_leaving_home">Esco di casa</string>
+    <string name="demo_flow_arriving_home">Rientro a casa</string>
 
     <!-- HomeySelectionScreen -->
     <string name="homey_selection_title">Account Homey</string>
@@ -131,4 +149,56 @@
     <string name="settings_status_oauth_ok">Connesso a %s</string>
     <string name="settings_status_oauth_missing">Non connesso</string>
     <string name="settings_sync_interval_seconds">%1$d secondi</string>
+
+    <!-- Geofencing & Smart Alerts -->
+    <string name="geofence_channel_name">Avvisi Prossimità Casa</string>
+    <string name="geofence_channel_desc">Notifiche all\'avvicinamento o all\'allontanamento da casa</string>
+    <string name="geofence_notif_departure_title">Sei uscito di casa</string>
+    <string name="geofence_notif_departure_single">%s è ancora aperto</string>
+    <string name="geofence_notif_departure_multi">%d varchi sono ancora aperti</string>
+    <string name="geofence_notif_arrival_title">Sei vicino a casa</string>
+    <string name="geofence_notif_arrival_single">%s è chiuso</string>
+    <string name="geofence_notif_arrival_multi">%d varchi sono chiusi</string>
+    <string name="geofence_action_close">Chiudi %s</string>
+    <string name="geofence_action_lock">Blocca %s</string>
+    <string name="geofence_action_open">Apri %s</string>
+    <string name="geofence_action_unlock">Sblocca %s</string>
+    <string name="geofence_action_close_all">Chiudi tutti</string>
+    <string name="geofence_action_open_all">Apri tutti</string>
+    <string name="geofence_notif_auto_closed">Chiuso automaticamente: %s &#10003;</string>
+    <string name="geofence_action_done">%s &#10003;</string>
+    <string name="geofence_action_failed">%s non riuscito</string>
+    <string name="geofence_action_already_done">%s già eseguito</string>
+
+    <!-- PermissionScreen (Google Play Compliant Prominent Disclosure) -->
+    <string name="permission_screen_title">Posizione e Avvisi Intelligenti</string>
+    <string name="permission_step0_message">Homey raccoglie dati sulla posizione per consentire le funzionalità di geofencing intelligente, inclusi gli avvisi di sicurezza in partenza se porte del garage o serrature sono rimaste aperte e i prompt di apertura rapida in arrivo, anche quando l\'app è chiusa o non in uso.\n\nUtilizzo e Privacy:\n• La tua posizione precisa viene utilizzata in tempo reale esclusivamente per rilevare la vicinanza al perimetro di casa.\n• Tutta l\'elaborazione della posizione avviene localmente sul veicolo.\n• I dati di localizzazione non vengono mai ceduti a terzi, non vengono memorizzati su server esterni e non vengono mai utilizzati per finalità pubblicitarie o di tracciamento.\n\nQuesta funzionalità è facoltativa: puoi rifiutare e continuare a utilizzare tutte le altre funzioni di Homey normalmente.</string>
+    <string name="permission_step1_message">Per consentire gli avvisi automatici di arrivo e partenza durante la guida, Homey richiede l\'accesso alla posizione in background.\n\nNella schermata di sistema successiva, seleziona \"Consenti sempre\". Questo permette a Homey di rilevare il perimetro di casa anche quando l\'app è chiusa o non in uso.\n\nI tuoi dati di posizione restano riservati, vengono elaborati solo sul veicolo e non vengono mai condivisi.</string>
+    <string name="permission_granted_message">Configurazione completata! Gli avvisi di prossimità in background sono attivi.</string>
+    <string name="permission_foreground_only_message">Posizione concessa in primo piano. Gli Avvisi Intelligenti saranno attivi mentre l\'app Homey è aperta sullo schermo.\n\nPer ricevere gli avvisi anche ad app chiusa, imposta la posizione su \"Consenti sempre\" nelle Impostazioni del veicolo → App → Homey.</string>
+    <string name="permission_denied_message">Accesso alla posizione rifiutato. Gli avvisi di prossimità non possono funzionare senza autorizzazione. Puoi attivarla in qualsiasi momento nelle Impostazioni del veicolo → App → Homey.</string>
+    <string name="permission_btn_enable">Accetto e Continua</string>
+    <string name="permission_btn_allow_always">Accetto e Continua</string>
+    <string name="permission_btn_not_now">Non accetto</string>
+
+    <!-- Settings Geofence Section -->
+    <string name="settings_geofence_section">Geofence e Avvisi Intelligenti</string>
+    <string name="settings_geofence_status_title">Avvisi di Prossimità</string>
+    <string name="settings_geofence_status_active">Attivo (raggio %1$.0fm)</string>
+    <string name="settings_geofence_status_foreground_only">Attivo (Solo con app aperta)</string>
+    <string name="settings_geofence_status_disabled">Disattivato</string>
+    <string name="settings_geofence_status_no_location">Coordinate casa non configurate</string>
+    <string name="settings_geofence_status_no_perm">Permessi necessari</string>
+    <string name="settings_geofence_upgrade_bg_title">Abilita Avvisi in Background</string>
+    <string name="settings_geofence_upgrade_bg_desc">Consenti la posizione sempre attiva per ricevere avvisi anche ad app chiusa</string>
+    <string name="settings_geofence_auto_close_title">Chiusura Automatica in Partenza</string>
+    <string name="settings_geofence_auto_close_desc">Chiude automaticamente i varchi aperti quando ti allontani da casa</string>
+    <string name="settings_geofence_refresh_coords">Aggiorna Coordinate</string>
+    <string name="settings_geofence_refresh_coords_desc">Recupera la posizione aggiornata da Homey</string>
+    <string name="settings_geofence_coords_format">Lat: %1$.6f, Lng: %2$.6f</string>
+    <string name="settings_geofence_coords_success">Coordinate aggiornate con successo</string>
+    <string name="settings_geofence_coords_error">Impossibile recuperare le coordinate da Homey</string>
+    <string name="settings_geofence_coords_not_set">Non configurate</string>
+    <string name="settings_demo_coords_unsupported">L\'aggiornamento delle coordinate richiede un Homey fisico.</string>
+    <string name="settings_geofence_permissions_btn">Concedi Permessi</string>
 </resources>
