@@ -60,5 +60,9 @@ homey app run
 
 We take your privacy seriously. **Homey for Android Automotive** is designed with data minimization in mind: no personal identification data is collected or sent to external servers. Location data used for smart geofencing is processed 100% locally on your vehicle. For more information, please refer to our [Privacy Policy](https://s-dimaio.github.io/HomeyAutomotive/privacy.html).
 
+## 🙏 Acknowledgements
+
+Special thanks to [Gonçalo Barradas](https://github.com/goncalb) for the inspiring concept of in-car geofence notifications implemented in his [car-dashboard-aaos](https://github.com/goncalb/car-dashboard-aaos) project.
+
 ## 📄 License
 This project is licensed under the GNU GPL v3 License.
