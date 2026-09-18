@@ -378,13 +378,22 @@ class TokenStorage(private val context: Context) {
     }
 
     /**
-     * Retrieves the sync interval in seconds, defaulting to 5 if not set.
+     * Retrieves the sync interval in seconds, defaulting to 15 if not set.
+     * Automatically migrates legacy 5-second default to 15 seconds to prevent cloud network congestion.
      *
      * @public
      * @return Sync interval in seconds.
      * @example val interval = storage.getSyncInterval()
      */
-    fun getSyncInterval(): Int = prefs.getInt(KEY_SYNC_INTERVAL, 5)
+    fun getSyncInterval(): Int {
+        val saved = prefs.getInt(KEY_SYNC_INTERVAL, 15)
+        return if (saved == 5) {
+            saveSyncInterval(15)
+            15
+        } else {
+            saved
+        }
+    }
 
     // ── Public Methods — Geofencing ──────────────────────────────────────────
 

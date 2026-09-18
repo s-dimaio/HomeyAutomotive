@@ -5,7 +5,7 @@
 
     <!-- SettingsScreen -->
     <string name="settings_clear_icon_cache">Pulisci Cache</string>
-    <string name="settings_clear_icon_cache_desc">Forza ricaricamento lista dispositivi e icone</string>
+    <string name="settings_clear_icon_cache_desc">Forza ricaricamento dispositivi, flow e icone</string>
     <string name="settings_home_tab_source">Home Tab</string>
     <string name="settings_sync_interval">Intervallo di aggiornamento</string>
     <string name="settings_sync_interval_label">Intervallo di aggiornamento</string>
@@ -16,7 +16,7 @@
     <string name="settings_sync_interval_disabled">Nessun aggiornamento</string>
 
 
-    <string name="settings_cache_cleared">Cache pulita (Dispositivi e Icone).</string>
+    <string name="settings_cache_cleared">Cache svuotata (Dispositivi, Flow e Icone).</string>
     <string name="settings_cache_error">Errore svuotamento cache.</string>
     <string name="settings_saved">Impostazioni salvate.</string>
 
@@ -25,10 +25,10 @@
     <string name="flows_header_title">Flow Homey</string>
     <string name="flows_error_title">Errore</string>
     <string name="flows_error_unknown">Errore sconosciuto</string>
-    <string name="flows_empty_message">Nessun Flow trovato. Crea un Flow con trigger manuale su Homey.</string>
+    <string name="flows_empty_message">Nessuno scenario trovato. Crea un Flow con trigger manuale su Homey.</string>
     <string name="flows_manual_folder">Flow manuali</string>
     <string name="flows_running">In esecuzione...</string>
-    <string name="flows_started_toast">Flow \"%s\" avviato</string>
+    <string name="flows_started_toast">Scenario \"%s\" avviato</string>
     <string name="flows_error_toast">Errore: %s</string>
 
     <!-- HomeSourceSelectionScreen -->
@@ -44,11 +44,14 @@
 
     <!-- MainTabScreen -->
     <string name="tab_home_title">Home</string>
+    <string name="tab_devices_title">Dispositivi</string>
+    <string name="tab_flows_title">Scenari</string>
     <string name="tab_locks_title">Serrature</string>
     <string name="tab_lights_title">Luci</string>
     <string name="tab_settings_title">Impostazioni</string>
     <string name="main_error_load_devices">Impossibile caricare i dispositivi.\n\n%s</string>
     <string name="main_retry_button">Riprova</string>
+    <string name="main_no_devices">Nessun dispositivo compatibile trovato.</string>
     <string name="main_no_locks">Nessuna serratura.</string>
     <string name="main_no_lights">Nessuna luce.</string>
     <string name="main_error_dashboard_load">Errore caricamento Dashboard: %s</string>
@@ -59,6 +62,25 @@
     <string name="device_state_off">Spenta</string>
     <string name="device_state_open">Aperto</string>
     <string name="device_state_closed">Chiuso</string>
+    
+    <!-- Home Overview & Zone Summary -->
+    <string name="home_overview_title">Panoramica Casa</string>
+    <string name="home_overview_all_secure">Tutti i varchi chiusi</string>
+    <string name="home_overview_open_count">%d varchi aperti</string>
+    <string name="home_overview_open_single">1 varco aperto</string>
+    <string name="home_overview_lights_off">Tutte le luci spente</string>
+    <string name="home_overview_lights_on_count">%d luci accese</string>
+    <string name="home_overview_lights_on_single">1 luce accesa</string>
+    <string name="home_overview_avg_temp">Temperatura media: %s</string>
+    <string name="home_overview_temp_indoor">Int. %s</string>
+    <string name="home_overview_temp_outdoor">Est. %s</string>
+    <string name="zone_lights_on_count">%d luci accese</string>
+    <string name="zone_lights_on_single">1 luce accesa</string>
+    <string name="zone_lights_off">Tutte le luci spente</string>
+    <string name="zone_barriers_open_count">%d varchi aperti</string>
+    <string name="zone_barriers_open_single">1 varco aperto</string>
+    <string name="zone_barriers_secure">Tutti i varchi chiusi</string>
+    <string name="flows_tab_coming_soon">Gli scenari saranno disponibili qui a breve</string>
     
     <!-- HomeyRepository -->
     <string name="repo_error_not_configured">Homey non configurato. Verifica le impostazioni.</string>
@@ -71,6 +93,7 @@
     <string name="repo_error_network">Errore di rete: %s</string>
     <string name="repo_success_flow">Flow avviato con successo</string>
     <string name="repo_error_flow_trigger_http">Errore HTTP %d: impossibile avviare il Flow</string>
+    <string name="repo_error_flow_homeyscript_missing">L\'app HomeyScript non è installata su Homey Pro. Installala dall\'Homey App Store per avviare i Flow.</string>
     <string name="repo_error_sync_failed">Sincronizzazione fallita: %s</string>
     <string name="repo_error_auth_failed">Autenticazione fallita: HTTP %d. Verifica PAT e Homey ID.</string>
     <string name="repo_error_dashboard_not_found">Dashboard \'%s\' non trovata.</string>
@@ -130,6 +153,11 @@
     <string name="demo_zone_outside">Esterno</string>
     <string name="demo_flow_leaving_home">Esco di casa</string>
     <string name="demo_flow_arriving_home">Rientro a casa</string>
+    <string name="demo_flow_goodnight">Chiudi tutto &amp; Buonanotte</string>
+    <string name="demo_flow_welcome">Apertura varchi cortesia</string>
+    <string name="demo_folder_automations">Automazioni</string>
+    <string name="demo_folder_security">Sicurezza</string>
+    <string name="flows_general_folder">No Folder</string>
 
     <!-- HomeySelectionScreen -->
     <string name="homey_selection_title">Account Homey</string>
@@ -172,8 +200,8 @@
 
     <!-- PermissionScreen (Google Play Compliant Prominent Disclosure) -->
     <string name="permission_screen_title">Posizione e Avvisi Intelligenti</string>
-    <string name="permission_step0_message">Homey raccoglie dati sulla posizione per consentire le funzionalità di geofencing intelligente, inclusi gli avvisi di sicurezza in partenza se porte del garage o serrature sono rimaste aperte e i prompt di apertura rapida in arrivo, anche quando l\'app è chiusa o non in uso.\n\nUtilizzo e Privacy:\n• La tua posizione precisa viene utilizzata in tempo reale esclusivamente per rilevare la vicinanza al perimetro di casa.\n• Tutta l\'elaborazione della posizione avviene localmente sul veicolo.\n• I dati di localizzazione non vengono mai ceduti a terzi, non vengono memorizzati su server esterni e non vengono mai utilizzati per finalità pubblicitarie o di tracciamento.\n\nQuesta funzionalità è facoltativa: puoi rifiutare e continuare a utilizzare tutte le altre funzioni di Homey normalmente.</string>
-    <string name="permission_step1_message">Per consentire gli avvisi automatici di arrivo e partenza durante la guida, Homey richiede l\'accesso alla posizione in background.\n\nNella schermata di sistema successiva, seleziona \"Consenti sempre\". Questo permette a Homey di rilevare il perimetro di casa anche quando l\'app è chiusa o non in uso.\n\nI tuoi dati di posizione restano riservati, vengono elaborati solo sul veicolo e non vengono mai condivisi.</string>
+    <string name="permission_step0_message">Homey per Android Automotive raccoglie i dati sulla posizione (coordinate GPS precise) per rilevare quando il veicolo si allontana o si avvicina alla tua abitazione. Questo consente di inviare notifiche di sicurezza se una porta del garage o una serratura è rimasta aperta alla partenza e scorciatoie per aprire cancelli o varchi con un tocco all\'arrivo, anche quando l\'app è chiusa o non in uso.\n\nPermesso Facoltativo:\nLa concessione dell\'accesso alla posizione è completamente facoltativa. Se rifiuti, tutte le altre funzionalità di Homey — inclusi il controllo manuale dei dispositivi, delle luci, delle serrature e l\'esecuzione dei Flow — continueranno a funzionare regolarmente e senza interruzioni. Solo gli avvisi automatici di allontanamento e avvicinamento non saranno disponibili.\n\nPrivacy e Sicurezza:\nI dati di localizzazione vengono elaborati in tempo reale esclusivamente sul veicolo. La tua posizione non viene mai condivisa con terzi, mai ceduta, mai memorizzata su server esterni e mai utilizzata per finalità pubblicitarie o di tracciamento.</string>
+    <string name="permission_step1_message">Per rilevare l\'avvicinamento e l\'allontanamento del veicolo durante la guida, Homey per Android Automotive richiede l\'autorizzazione alla posizione in background.\n\nNella schermata di sistema successiva, seleziona \"Consenti sempre\". Questo permette all\'app di rilevare quando l\'auto si avvicina o si allontana da casa anche quando l\'app è chiusa o non in uso.\n\nL\'elaborazione della posizione avviene solo sul veicolo e non viene mai condivisa o memorizzata.</string>
     <string name="permission_granted_message">Configurazione completata! Gli avvisi di prossimità in background sono attivi.</string>
     <string name="permission_foreground_only_message">Posizione concessa in primo piano. Gli Avvisi Intelligenti saranno attivi mentre l\'app Homey è aperta sullo schermo.\n\nPer ricevere gli avvisi anche ad app chiusa, imposta la posizione su \"Consenti sempre\" nelle Impostazioni del veicolo → App → Homey.</string>
     <string name="permission_denied_message">Accesso alla posizione rifiutato. Gli avvisi di prossimità non possono funzionare senza autorizzazione. Puoi attivarla in qualsiasi momento nelle Impostazioni del veicolo → App → Homey.</string>

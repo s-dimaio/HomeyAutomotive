@@ -270,9 +270,10 @@ class SettingsScreen(carContext: CarContext) : Screen(carContext) {
     private fun _clearIconCache() {
         scope.launch {
             try {
-                // Clear both icon images from disk and device structure from memory
+                // Clear icon images from disk, and both device and flow structures from memory
                 com.dimapp.android.homeyautomotive.utils.IconFetcher.clearCache(carContext, DependencyManager.getTokenStorage(carContext))
                 DependencyManager.getDeviceRepository(carContext).invalidateCache()
+                DependencyManager.getFlowRepository(carContext).invalidateCache()
 
                 CarToast.makeText(
                     carContext,

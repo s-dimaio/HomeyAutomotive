@@ -5,10 +5,12 @@ Bring your smart home to your car's dashboard! **Homey for Android Automotive** 
 ## 🌟 Key Features
 
 - **Native AAOS Experience**: Built using the official Android for Cars App Library, ensuring a distraction-free, driver-optimized interface that complies with strict automotive safety guidelines.
-- **Real-Time Control**: Toggle lights, open/close garage doors and locks, and monitor the real-time state of your devices.
+- **Real-Time Control**: Toggle lights, open/close garage doors and locks, and monitor real-time device states.
+- **Unified Devices & Home Overview**: Lights, locks, and barriers organized by room with live active room indicators, zone summaries, and an aggregate Home status overview.
+- **Scenarios & Flow Integration**: Dedicated Scenarios tab to execute Standard and Advanced Homey Flows directly from the vehicle with instant feedback.
 - **Smart Geofencing & In-Car Alerts**: Automatic arrival and departure assistance powered by on-device geofencing. Receive departure warnings if doors or garages are left open, optional auto-close routines, and proactive arrival shortcuts to open gates with a single tap.
+- **Climate Overview**: View indoor and outdoor average temperatures and room-level temperature readings directly on your car's screen.
 - **Smart Filtering**: Choose exactly which devices to expose to the car through the companion app's settings, or automatically sync your Homey Favorite Devices.
-- **Flow Integration**: Execute your manual Homey Flows with a simple tap from the driver's seat.
 - **Secure Authentication**: Uses a seamless, secure OAuth2 flow. A QR code bridges the gap between your car screen and your smartphone—no typing passwords on the dashboard.
 - **Multi-Hub Support**: Connect and manage multiple Homey hubs seamlessly.
 - **Demo Mode**: Test and evaluate the full application without a physical Homey hub by entering `demo` as your Homey ID.

@@ -295,7 +295,10 @@ class HomeyAuthRepository(
     private fun _saveAuthData(token: CompanionToken) {
         val homeyId = token.homey_id ?: return
         val apiUrl = token.homey_api_url ?: return
-        val sessionToken = token.session_token
+        val sessionToken = token.session_token ?: run {
+            Log.e(TAG, "[HomeyAuthRepository:_saveAuthData] Failed: session_token is null in payload.")
+            return
+        }
         val refreshSecret = token.athom_refresh_token ?: return
 
         // 1. Resolve hub name from token data (Companion App is Hub-centric, no multi-hub list)

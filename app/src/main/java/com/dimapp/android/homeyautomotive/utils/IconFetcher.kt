@@ -3,6 +3,9 @@ package com.dimapp.android.homeyautomotive.utils
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import androidx.car.app.model.CarIcon
 import androidx.core.content.ContextCompat
@@ -107,22 +110,19 @@ object IconFetcher {
     }
 
     /**
-     * Downloads an icon from Homey or CDN, scales it, and wraps it into a [CarIcon].
+     * Downloads an icon from Homey or CDN and decodes it into a [Drawable] using Coil.
      *
      * Public method.
      *
      * @public
      * @param context App context.
      * @param urlOrPath The icon URL (absolute) or relative path (from `iconObj.url`).
-     * @param storage Shared [TokenStorage] instance (from [DependencyManager]) used to
-     *   inject the Bearer token and resolve the active Homey hub ID for URL reconstruction.
-     * @return [CarIcon] if successful, `null` if empty or download fails.
+     * @param storage Shared [TokenStorage] instance.
+     * @return Decoded [Drawable] if successful, `null` otherwise.
      * @example
-     * ```
-     * val icon = IconFetcher.fetchCarIcon(carContext, device.iconUrl, DependencyManager.getTokenStorage(carContext))
-     * ```
+     * val drawable = IconFetcher.fetchDrawable(carContext, device.iconUrl, storage)
      */
-    suspend fun fetchCarIcon(context: Context, urlOrPath: String?, storage: TokenStorage): CarIcon? {
+    suspend fun fetchDrawable(context: Context, urlOrPath: String?, storage: TokenStorage): Drawable? {
         if (urlOrPath.isNullOrBlank()) return null
 
         val homeyId = storage.getSelectedHomeyId() ?: return null
@@ -143,13 +143,57 @@ object IconFetcher {
         val loader = _getImageLoader(context, storage)
         val result = loader.execute(request)
 
-        if (result is SuccessResult) {
-            val bitmap = _drawIconOnCard(result.drawable)
-            val iconCompat = IconCompat.createWithBitmap(bitmap)
-            return CarIcon.Builder(iconCompat).build()
+        return if (result is SuccessResult) {
+            result.drawable
+        } else {
+            null
         }
+    }
 
-        return null
+    /**
+     * Converts any [Drawable] into a styled [CarIcon] centered on a white rounded card,
+     * with an optional badge indicator in the top-right corner.
+     *
+     * Public method.
+     *
+     * @public
+     * @param drawable The source drawable to render inside the card.
+     * @param badgeColor Optional ARGB color for the status indicator dot in the top-right corner.
+     * @return A styled [CarIcon].
+     * @example
+     * val icon = IconFetcher.getStyledIconFromDrawable(drawable, Color.rgb(255, 160, 0))
+     */
+    fun getStyledIconFromDrawable(drawable: Drawable, badgeColor: Int? = null): CarIcon {
+        val bitmap = _drawIconOnCard(drawable, badgeColor)
+        val iconCompat = IconCompat.createWithBitmap(bitmap)
+        return CarIcon.Builder(iconCompat).build()
+    }
+
+    /**
+     * Downloads an icon from Homey or CDN, scales it, and wraps it into a [CarIcon] on a white card.
+     *
+     * Public method.
+     *
+     * @public
+     * @param context App context.
+     * @param urlOrPath The icon URL (absolute) or relative path (from `iconObj.url`).
+     * @param storage Shared [TokenStorage] instance (from [DependencyManager]) used to
+     *   inject the Bearer token and resolve the active Homey hub ID for URL reconstruction.
+     * @param badgeColor Optional ARGB color for the status indicator dot in the top-right corner.
+     * @return [CarIcon] if successful, `null` if empty or download fails.
+     * @example
+     * ```
+     * val icon = IconFetcher.fetchCarIcon(carContext, device.iconUrl, DependencyManager.getTokenStorage(carContext))
+     * ```
+     */
+    suspend fun fetchCarIcon(
+        context: Context,
+        urlOrPath: String?,
+        storage: TokenStorage,
+        badgeColor: Int? = null
+    ): CarIcon? {
+        val drawable = fetchDrawable(context, urlOrPath, storage) ?: return null
+        return getStyledIconFromDrawable(drawable, badgeColor)
     }
 
     /**
@@ -160,35 +204,38 @@ object IconFetcher {
      * @public
      * @param context App context.
      * @param resId The drawable resource ID.
+     * @param badgeColor Optional ARGB color for the status indicator dot in the top-right corner.
      * @return A styled [CarIcon].
-     * @example val icon = IconFetcher.getStyledIconFromResource(context, R.drawable.my_icon)
+     * @example val icon = IconFetcher.getStyledIconFromResource(context, R.drawable.my_icon, Color.GREEN)
      */
-    fun getStyledIconFromResource(context: Context, resId: Int): CarIcon {
+    fun getStyledIconFromResource(context: Context, resId: Int, badgeColor: Int? = null): CarIcon {
         val drawable = ContextCompat.getDrawable(context, resId)
             ?: throw IllegalArgumentException("Resource ID $resId not found")
         
         // Tints the system vector icon black so it remains visible on a white background
         androidx.core.graphics.drawable.DrawableCompat.setTint(
             androidx.core.graphics.drawable.DrawableCompat.wrap(drawable).mutate(),
-            android.graphics.Color.BLACK
+            Color.BLACK
         )
         
-        val bitmap = _drawIconOnCard(drawable)
+        val bitmap = _drawIconOnCard(drawable, badgeColor)
         val iconCompat = IconCompat.createWithBitmap(bitmap)
         return CarIcon.Builder(iconCompat).build()
     }
 
     /**
-     * Internal helper to draw any drawable centered on a white rounded-corner card.
-     * Consistently used for both fetched icons and placeholders.
+     * Internal helper to draw any drawable centered on a white rounded-corner card,
+     * with an optional colored status badge dot in the top-right corner.
+     * Consistently used for both fetched icons, placeholders, and overview badges.
      *
      * Private method.
      *
      * @private
      * @param drawable The source drawable to render inside the card.
+     * @param badgeColor Optional ARGB color for the status indicator dot in the top-right corner.
      * @return A 256x256 software [Bitmap] with the icon centred on a white rounded card.
      */
-    private fun _drawIconOnCard(drawable: Drawable): Bitmap {
+    private fun _drawIconOnCard(drawable: Drawable, badgeColor: Int? = null): Bitmap {
         // Draw any Drawable (Bitmap/Vector/SVG) onto a fixed-size software Bitmap
         val bitmap = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -199,12 +246,12 @@ object IconFetcher {
         // 1. Define typical Card layout
         // No shadows or margins to maximize button space
         val paddingOuter = 2f
-        val cardRect = android.graphics.RectF(paddingOuter, paddingOuter, width - paddingOuter, height - paddingOuter)
+        val cardRect = RectF(paddingOuter, paddingOuter, width - paddingOuter, height - paddingOuter)
         val cornerRadius = 40f
         
         // 2. Prepare the paint (Flat White Apple/Metro design)
-        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
         }
         
         // 3. Draw the clean rounded card
@@ -221,6 +268,27 @@ object IconFetcher {
         // 5. Draw the source vector inside the calculated bounds
         drawable.setBounds(iconLeft, iconTop, iconRight, iconBottom)
         drawable.draw(canvas)
+
+        // 6. Draw badge dot in top right if requested
+        if (badgeColor != null) {
+            val badgeRadius = 24f
+            val badgeCenterX = cardRect.right - 44f
+            val badgeCenterY = cardRect.top + 44f
+
+            // White border ring for clean separation from the black icon or card background
+            val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                style = Paint.Style.FILL
+            }
+            canvas.drawCircle(badgeCenterX, badgeCenterY, badgeRadius + 4f, borderPaint)
+
+            // Colored status indicator dot
+            val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = badgeColor
+                style = Paint.Style.FILL
+            }
+            canvas.drawCircle(badgeCenterX, badgeCenterY, badgeRadius, dotPaint)
+        }
         
         return bitmap
     }

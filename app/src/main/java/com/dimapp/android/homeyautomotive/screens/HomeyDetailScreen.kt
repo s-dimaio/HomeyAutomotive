@@ -50,6 +50,7 @@ class HomeyDetailScreen(
                     .setOnClickListener(ParkedOnlyOnClickListener.create {
                         storage.switchActiveHomey(homey.id)
                         DependencyManager.getDeviceRepository(carContext).invalidateCache()
+                        DependencyManager.getFlowRepository(carContext).invalidateCache()
                         GeofenceManager.reregisterFromStorage(carContext)
                         CarToast.makeText(
                             carContext,
@@ -69,6 +70,7 @@ class HomeyDetailScreen(
                 .setOnClickListener(ParkedOnlyOnClickListener.create {
                     storage.removeHubToken(homey.id)
                     DependencyManager.getDeviceRepository(carContext).invalidateCache()
+                    DependencyManager.getFlowRepository(carContext).invalidateCache()
                     GeofenceManager.reregisterFromStorage(carContext)
                     if (storage.getAllHubTokens().isEmpty()) {
                         screenManager.popToRoot()

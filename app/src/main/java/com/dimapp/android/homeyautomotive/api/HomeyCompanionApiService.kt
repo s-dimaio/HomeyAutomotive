@@ -55,6 +55,15 @@ data class GeofenceConfigDto(
 )
 
 /**
+ * Thermometer classification configuration mapping device ID to mode:
+ * "indoor", "outdoor", or "ignored".
+ */
+data class ThermometersConfigDto(
+    @SerializedName("config") val config: Map<String, String> = emptyMap()
+)
+
+
+/**
  * Token payload delivered by the Homey Companion App after successful authorization.
  *
  * Note: The Companion App is Hub-centric and does not have access to the list of other
@@ -185,4 +194,13 @@ interface HomeyCompanionApiService {
      */
     @GET("geofence")
     suspend fun getGeofenceConfig(): GeofenceConfigDto
+
+    /**
+     * Retrieves the thermometer configuration mapping device IDs to classification modes.
+     *
+     * @public
+     * @return [ThermometersConfigDto] containing map of device ID to mode ("indoor", "outdoor", "ignored").
+     */
+    @GET("thermometers")
+    suspend fun getThermometersConfig(): ThermometersConfigDto
 }

@@ -2,6 +2,7 @@ package com.dimapp.android.homeyautomotive.screens
 
 import android.util.Log
 import androidx.car.app.CarContext
+import androidx.car.app.CarToast
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
 import androidx.car.app.model.CarColor
@@ -21,10 +22,12 @@ import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.dimapp.android.homeyautomotive.R
+import com.dimapp.android.homeyautomotive.api.models.FlowDto
 import com.dimapp.android.homeyautomotive.core.DependencyManager
 import com.dimapp.android.homeyautomotive.repository.models.HomeyDevice
 import com.dimapp.android.homeyautomotive.repository.DeviceRepository
 import com.dimapp.android.homeyautomotive.repository.DashboardRepository
+import com.dimapp.android.homeyautomotive.repository.FlowRepository
 import com.dimapp.android.homeyautomotive.repository.models.HomeyResult
 import com.dimapp.android.homeyautomotive.storage.HomeSource
 import com.dimapp.android.homeyautomotive.storage.TokenStorage
@@ -50,12 +53,19 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
 
     private val deviceRepository = DependencyManager.getDeviceRepository(carContext)
     private val dashboardRepository = DependencyManager.getDashboardRepository(carContext)
+    private val flowRepository = DependencyManager.getFlowRepository(carContext)
     private val storage = DependencyManager.getTokenStorage(carContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private var isLoading = true
     private var errorMessage: String? = null
     private var devices: List<HomeyDevice> = emptyList()
+
+    private var flows: List<FlowDto> = emptyList()
+    private var flowsErrorMessage: String? = null
+    private var isFlowsLoading = false
+    private var triggeringFlowId: String? = null
+    private var flowsLoadJob: Job? = null
 
     /** Cache: dashboardId -> Set of device IDs belonging to that dashboard. Populated on load. */
     private val dashboardDeviceIdsCache = mutableMapOf<String, Set<String>>()
@@ -68,6 +78,8 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
     private var lastHomeSource: HomeSource? = null
     private var lastDashboardId: String? = null
     private var lastActiveHubId: String? = null
+    private var lastAvgIndoorTemp: Double? = null
+    private var lastAvgOutdoorTemp: Double? = null
 
     /** Helper for icon caching and async downloading. */
     private val iconManager = MainTabIconManager(
@@ -99,6 +111,7 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
             override fun onDestroy(owner: LifecycleOwner) {
                 iconManager.cancelPendingJobs()
                 loadJob?.cancel()
+                flowsLoadJob?.cancel()
                 _stopPeriodicSync()
                 scope.cancel()
             }
@@ -127,13 +140,22 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
                 } else if (activeTabId != tabContentId) {
                     activeTabId = tabContentId
                     
-                    // Sync-on-Entry: When switching to non-Home tabs, trigger a one-shot 
+                    // Sync-on-Entry: When switching to the devices tab, trigger a one-shot 
                     // state refresh to ensure data is fresh even if polling is disabled.
-                    if (activeTabId != "tab_home") {
+                    if (activeTabId == "tab_devices") {
                         _syncActiveTabDevices()
+                    } else if (activeTabId == "tab_flows" && flows.isEmpty() && !isFlowsLoading) {
+                        _loadFlows()
                     }
                     
                     invalidate()
+                } else {
+                    // Re-tapping the active tab acts as a manual refresh
+                    if (activeTabId == "tab_flows") {
+                        _loadFlows(force = true)
+                    } else if (activeTabId == "tab_devices" || activeTabId == "tab_home") {
+                        _loadDevices(silent = true, force = true)
+                    }
                 }
             }
         }
@@ -152,16 +174,16 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
             )
             .addTab(
                 Tab.Builder()
-                    .setTitle(carContext.getString(R.string.tab_locks_title))
-                    .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_tab_lock)).build())
-                    .setContentId("tab_locks")
+                    .setTitle(carContext.getString(R.string.tab_devices_title))
+                    .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_tab_devices)).build())
+                    .setContentId("tab_devices")
                     .build()
             )
             .addTab(
                 Tab.Builder()
-                    .setTitle(carContext.getString(R.string.tab_lights_title))
-                    .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_tab_light)).build())
-                    .setContentId("tab_lights")
+                    .setTitle(carContext.getString(R.string.tab_flows_title))
+                    .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_tab_flows)).build())
+                    .setContentId("tab_flows")
                     .build()
             )
             .addTab(
@@ -195,14 +217,25 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
 
         return when (activeTabId) {
             "tab_home" -> _buildHomeGridTemplate()
-            "tab_locks" -> renderer.buildCategoryList(
-                devices.filter { !it.isLight && !it.isHidden && !it.isGroupMember },
-                carContext.getString(R.string.main_no_locks)
+            "tab_devices" -> renderer.buildDevicesUnifiedList(
+                devices = devices,
+                zoneTemperatures = deviceRepository.getZoneTemperatures(),
+                avgIndoorTemperature = deviceRepository.getAverageIndoorTemperature(),
+                avgOutdoorTemperature = deviceRepository.getAverageOutdoorTemperature()
             )
-            "tab_lights" -> renderer.buildCategoryList(
-                devices.filter { it.isLight && !it.isHidden && !it.isGroupMember },
-                carContext.getString(R.string.main_no_lights)
-            )
+            "tab_flows" -> {
+                if (isFlowsLoading && flows.isEmpty()) {
+                    renderer.buildLoadingTemplate()
+                } else {
+                    renderer.buildFlowsList(
+                        flows = flows,
+                        triggeringFlowId = triggeringFlowId,
+                        onTriggerRequested = { flow -> _triggerFlow(flow) },
+                        onRetryRequested = { _loadFlows(force = true) },
+                        errorMessage = flowsErrorMessage
+                    )
+                }
+            }
             else -> _buildHomeGridTemplate()
         }
     }
@@ -236,6 +269,9 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
         if (!silent) {
             isLoading = true
             errorMessage = null
+            if (flows.isEmpty()) {
+                isFlowsLoading = true
+            }
             invalidate()
         }
 
@@ -265,11 +301,27 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
             }
 
             // Executes fetch in parallel to avoid double loading spinners
-            // If force is true, we bypass the DeviceRepository cache.
+            // If force is true, we bypass the repository caches.
             val devicesDeferred = async { deviceRepository.getDevices(forceRefresh = force) }
             val dashboardDeferred = if (source == HomeSource.DASHBOARD && dashboardId != null) {
                 async { dashboardRepository.getDashboardDeviceIds(dashboardId) }
             } else null
+            val flowsDeferred = async { flowRepository.getTriggerableFlows(forceRefresh = force) }
+
+            val flowsResult = flowsDeferred.await()
+            when (flowsResult) {
+                is HomeyResult.Success -> {
+                    flows = flowsResult.data
+                    flowsErrorMessage = null
+                    isFlowsLoading = false
+                    Log.d(TAG, "_loadDevices: successfully prefetched ${flows.size} flows")
+                }
+                is HomeyResult.Error -> {
+                    Log.w(TAG, "_loadDevices: error prefetching flows -> ${flowsResult.message}")
+                    flowsErrorMessage = flowsResult.message
+                    isFlowsLoading = false
+                }
+            }
 
             when (val result = devicesDeferred.await()) {
                 is HomeyResult.Success -> {
@@ -293,8 +345,8 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
                     isLoading = false
                     errorMessage = null
 
-                    // Initial Sync-on-Entry logic for non-home tabs
-                    if (activeTabId != "tab_home") {
+                    // Initial Sync-on-Entry logic for devices tab
+                    if (activeTabId == "tab_devices") {
                         _syncActiveTabDevices()
                     }
 
@@ -324,25 +376,41 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
      * @private
      */
     private fun _syncActiveTabDevices() {
-        if (devices.isEmpty()) return
+        if (devices.isEmpty() || activeTabId == "tab_flows") return
         
         scope.launch {
-            Log.d(TAG, "_syncActiveTabDevices: triggered for $activeTabId")
+            Log.d(TAG, "[MainTabScreen:_syncActiveTabDevices] Triggered for $activeTabId")
             
-            // We only sync the subset of devices relevant to the current tab
-            val targetDevices = _getVisibleDevices()
-            if (targetDevices.isEmpty()) return@launch
-            
-            when (val result = deviceRepository.syncDeviceStates(targetDevices)) {
+            when (val result = deviceRepository.syncDeviceStates(devices)) {
                 is HomeyResult.Success -> {
-                    // Update main collection with fresh states from the sync
                     val updatedMap = result.data.associateBy { it.id }
-                    devices = devices.map { updatedMap[it.id] ?: it }
-                    Log.d(TAG, "_syncActiveTabDevices: success for ${result.data.size} devices.")
-                    invalidate()
+                    var hasChanges = false
+                    val newDevices = devices.map { current ->
+                        val fresh = updatedMap[current.id]
+                        if (fresh != null && (fresh.isActive != current.isActive || fresh.isAvailable != current.isAvailable)) {
+                            hasChanges = true
+                            fresh
+                        } else {
+                            current
+                        }
+                    }
+                    val currentAvgIndoor = deviceRepository.getAverageIndoorTemperature()
+                    val currentAvgOutdoor = deviceRepository.getAverageOutdoorTemperature()
+                    if (currentAvgIndoor != lastAvgIndoorTemp || currentAvgOutdoor != lastAvgOutdoorTemp) {
+                        hasChanges = true
+                        lastAvgIndoorTemp = currentAvgIndoor
+                        lastAvgOutdoorTemp = currentAvgOutdoor
+                    }
+                    if (hasChanges) {
+                        Log.d(TAG, "[MainTabScreen:_syncActiveTabDevices] State changes detected, invalidating UI.")
+                        devices = newDevices
+                        invalidate()
+                    } else {
+                        Log.d(TAG, "[MainTabScreen:_syncActiveTabDevices] No state changes detected.")
+                    }
                 }
                 is HomeyResult.Error -> {
-                    Log.w(TAG, "_syncActiveTabDevices: failed -> ${result.message}")
+                    Log.w(TAG, "[MainTabScreen:_syncActiveTabDevices] Sync failed: ${result.message}")
                 }
             }
         }
@@ -364,23 +432,28 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
         // - It is the first run (lastHomeSource has never been set), OR
         // - The user explicitly changed the Home tab source or selected dashboard in Settings, OR
         // - The active Homey Hub changed, OR
-        // - The device cache was invalidated externally (e.g., after a manual "Clear Cache" action).
+        // - The device or flow cache was invalidated externally.
         val configChanged = lastHomeSource == null ||
                            currentSource != lastHomeSource ||
                            currentDashboardId != lastDashboardId ||
                            hubChanged
 
-        val needsReload = configChanged || deviceRepository.isCacheEmpty()
+        val needsReload = configChanged || deviceRepository.isCacheEmpty() || flowRepository.isCacheEmpty()
 
         if (needsReload) {
+            if (configChanged) {
+                flowRepository.invalidateCache()
+            }
             // Show a loading spinner (not silent) if the list is empty OR if the hub changed
             val isSilent = devices.isNotEmpty() && !hubChanged
             
-            // Force-bypass the repository cache only if the source configuration has explicitly changed.
+            // Force-bypass the repository cache if the source configuration changed or caches were invalidated.
             // When the hub changes, DeviceRepository already ignores its own cache internally.
-            val shouldForce = configChanged && currentSource == HomeSource.DASHBOARD
+            val shouldForce = (configChanged && currentSource == HomeSource.DASHBOARD) || 
+                              deviceRepository.isCacheEmpty() || 
+                              flowRepository.isCacheEmpty()
             
-            Log.d(TAG, "_checkAndRefresh: reload needed (configChanged=$configChanged, hubChanged=$hubChanged, cacheEmpty=${deviceRepository.isCacheEmpty()}, silent=$isSilent, force=$shouldForce)")
+            Log.d(TAG, "_checkAndRefresh: reload needed (configChanged=$configChanged, hubChanged=$hubChanged, cacheEmpty=${deviceRepository.isCacheEmpty()}, flowCacheEmpty=${flowRepository.isCacheEmpty()}, silent=$isSilent, force=$shouldForce)")
             _loadDevices(silent = isSilent, force = shouldForce)
         }
     }
@@ -439,8 +512,7 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
                     devices.filter { it.isFavorite }
                 }
             }
-            "tab_locks"  -> devices.filter { !it.isLight && !it.isHidden && !it.isGroupMember }
-            "tab_lights" -> devices.filter { it.isLight && !it.isHidden && !it.isGroupMember }
+            "tab_devices" -> devices.filter { !it.isHidden && !it.isGroupMember }
             else -> emptyList()
         }
     }
@@ -461,18 +533,18 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
 
         val initialInterval = storage.getSyncInterval()
         if (initialInterval <= 0) {
-            Log.d(TAG, "_startPeriodicSync: polling disabled (interval = $initialInterval)")
+            Log.d(TAG, "[MainTabScreen:_startPeriodicSync] Polling disabled (interval = $initialInterval)")
             return
         }
 
-        Log.d(TAG, "_startPeriodicSync: starting polling every $initialInterval seconds")
+        Log.d(TAG, "[MainTabScreen:_startPeriodicSync] Starting polling every $initialInterval seconds")
         syncJob = scope.launch {
             while (isActive) {
                 // Re-read the interval on every cycle so that changes made in Settings
                 // are immediately reflected without requiring an app restart.
                 val currentInterval = storage.getSyncInterval()
                 if (currentInterval <= 0) {
-                    Log.d(TAG, "_startPeriodicSync: polling disabled in cycle, exiting.")
+                    Log.d(TAG, "[MainTabScreen:_startPeriodicSync] Polling disabled in cycle, exiting.")
                     break
                 }
                 delay(currentInterval * 1000L)
@@ -497,38 +569,34 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     /**
-     * Performs a one-time refresh of states for visible devices.
+     * Performs a one-time bulk refresh of states for all devices.
      *
      * Private method.
-     * Fetches current states from the repository and updates [devices] if changes are found.
+     * Fetches current states from the repository via a single HTTP bulk call and updates [devices] if changes are found.
+     * Skips execution when the Flows tab is active to avoid unnecessary network traffic.
      *
      * @private
      * @example
      * _refreshDeviceStates()
      */
     private fun _refreshDeviceStates() {
-        if (devices.isEmpty() || isLoading) {
-            Log.v(TAG, "_refreshDeviceStates: skip (empty=${devices.isEmpty()}, loading=$isLoading)")
+        if (devices.isEmpty() || isLoading || activeTabId == "tab_flows") {
+            Log.v(TAG, "[MainTabScreen:_refreshDeviceStates] Skip (empty=${devices.isEmpty()}, loading=$isLoading, tab=$activeTabId)")
             return
         }
 
-        val visibleDevices = _getVisibleDevices()
-        if (visibleDevices.isEmpty()) {
-            Log.v(TAG, "_refreshDeviceStates: skip (no visible devices on tab $activeTabId)")
-            return
-        }
-
-        Log.d(TAG, "_refreshDeviceStates: syncing ${visibleDevices.size} visible devices (Tab: $activeTabId)")
+        Log.d(TAG, "[MainTabScreen:_refreshDeviceStates] Starting bulk sync for ${devices.size} devices (Tab: $activeTabId)")
         scope.launch {
-            when (val result = deviceRepository.syncDeviceStates(visibleDevices)) {
+            when (val result = deviceRepository.syncDeviceStates(devices)) {
                 is HomeyResult.Success -> {
                     var isChanged = false
-                    val updatedVisible = result.data
+                    val updatedList = result.data
+                    val updatedMap = updatedList.associateBy { it.id }
 
-                    // Reconciles the status of displayed devices with the global array of all devices
+                    // Reconciles the status of all devices
                     val newDevices = devices.map { current ->
-                        val updated = updatedVisible.find { it.id == current.id }
-                        if (updated != null && updated.isActive != current.isActive) {
+                        val updated = updatedMap[current.id]
+                        if (updated != null && (updated.isActive != current.isActive || updated.isAvailable != current.isAvailable)) {
                             isChanged = true
                             updated
                         } else {
@@ -536,14 +604,24 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
                         }
                     }
 
+                    val currentAvgIndoor = deviceRepository.getAverageIndoorTemperature()
+                    val currentAvgOutdoor = deviceRepository.getAverageOutdoorTemperature()
+                    if (currentAvgIndoor != lastAvgIndoorTemp || currentAvgOutdoor != lastAvgOutdoorTemp) {
+                        isChanged = true
+                        lastAvgIndoorTemp = currentAvgIndoor
+                        lastAvgOutdoorTemp = currentAvgOutdoor
+                    }
+
                     if (isChanged) {
-                        Log.d(TAG, "_refreshDeviceStates: changes detected, invalidating interface.")
+                        Log.d(TAG, "[MainTabScreen:_refreshDeviceStates] Changes detected, invalidating interface.")
                         devices = newDevices
                         invalidate()
+                    } else {
+                        Log.d(TAG, "[MainTabScreen:_refreshDeviceStates] No changes detected across ${devices.size} devices.")
                     }
                 }
                 is HomeyResult.Error -> {
-                    Log.e(TAG, "_refreshDeviceStates: partial sync error -> ${result.message}")
+                    Log.e(TAG, "[MainTabScreen:_refreshDeviceStates] Bulk sync error: ${result.message}")
                 }
             }
         }
@@ -604,5 +682,79 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
 
     private fun _dashboardDeviceIds(dashboardId: String): Set<String> {
         return dashboardDeviceIdsCache[dashboardId] ?: emptySet()
+    }
+
+    /**
+     * Loads all triggerable flows independently from the repository.
+     *
+     * Private method.
+     * Updates [flows], [isFlowsLoading], and [flowsErrorMessage], and notifies the host.
+     *
+     * @param force If true, forces a network fetch bypassing any in-memory cache.
+     * @example
+     * _loadFlows(force = true)
+     */
+    private fun _loadFlows(force: Boolean = false) {
+        if (flowsLoadJob?.isActive == true) {
+            flowsLoadJob?.cancel()
+        }
+
+        isFlowsLoading = true
+        flowsErrorMessage = null
+        invalidate()
+
+        flowsLoadJob = scope.launch {
+            Log.d(TAG, "_loadFlows: fetching flows (force=$force)")
+            when (val result = flowRepository.getTriggerableFlows(forceRefresh = force)) {
+                is HomeyResult.Success -> {
+                    flows = result.data
+                    flowsErrorMessage = null
+                    isFlowsLoading = false
+                    Log.d(TAG, "_loadFlows: successfully loaded ${flows.size} flows")
+                }
+                is HomeyResult.Error -> {
+                    flowsErrorMessage = result.message
+                    isFlowsLoading = false
+                    Log.e(TAG, "_loadFlows: error -> ${result.message}")
+                }
+            }
+            invalidate()
+            flowsLoadJob = null
+        }
+    }
+
+    /**
+     * Triggers execution of a specific Homey Flow.
+     *
+     * Private method.
+     * Sets [triggeringFlowId] to render transient execution feedback and prevent concurrent requests.
+     * Displays a [CarToast] indicating success or error when completed.
+     *
+     * @param flow The [FlowDto] to trigger.
+     * @example
+     * _triggerFlow(flow)
+     */
+    private fun _triggerFlow(flow: FlowDto) {
+        if (triggeringFlowId != null) return
+
+        triggeringFlowId = flow.id
+        invalidate()
+
+        scope.launch {
+            Log.d(TAG, "_triggerFlow: triggering flow '${flow.name}' (${flow.id}) [isAdvanced=${flow.isAdvanced}]")
+            val result = flowRepository.triggerFlow(flow.id, flow.isAdvanced)
+            triggeringFlowId = null
+
+            CarToast.makeText(
+                carContext,
+                when (result) {
+                    is HomeyResult.Success -> carContext.getString(R.string.flows_started_toast, flow.name)
+                    is HomeyResult.Error -> carContext.getString(R.string.flows_error_toast, result.message)
+                },
+                if (result is HomeyResult.Success) CarToast.LENGTH_SHORT else CarToast.LENGTH_LONG
+            ).show()
+
+            invalidate()
+        }
     }
 }

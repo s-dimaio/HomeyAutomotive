@@ -41,6 +41,9 @@ const val CAP_ONOFF = "onoff"
  * @property isHidden `true` if the device shouldn't be shown.
  * @property isGroupMember `true` if this device is part of a larger group.
  * @property zoneOrder Order index based on depth-first search of zones.
+ * @property zoneId Optional UUID of the zone/room the device belongs to.
+ * @property isZoneActive Whether the device's zone is currently active (e.g. motion/occupancy).
+ * @property temperature Optional temperature reading if the device reports `measure_temperature`.
  */
 data class HomeyDevice(
     val id: String,
@@ -55,5 +58,8 @@ data class HomeyDevice(
     val isLight: Boolean,
     val isHidden: Boolean,
     val isGroupMember: Boolean,
-    val zoneOrder: Int
+    val zoneOrder: Int,
+    val zoneId: String? = null,
+    val isZoneActive: Boolean = false,
+    val temperature: Double? = null
 )

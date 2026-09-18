@@ -3,6 +3,9 @@ package com.dimapp.android.homeyautomotive.api
 import com.dimapp.android.homeyautomotive.api.models.DashboardDto
 import com.dimapp.android.homeyautomotive.api.models.DeviceDto
 import com.dimapp.android.homeyautomotive.api.models.FlowDto
+import com.dimapp.android.homeyautomotive.api.models.FlowFolderDto
+import com.dimapp.android.homeyautomotive.api.models.FlowTriggerRequestDto
+import com.dimapp.android.homeyautomotive.api.models.FlowTriggerResponseDto
 import com.dimapp.android.homeyautomotive.api.models.SetCapabilityBody
 import com.dimapp.android.homeyautomotive.api.models.UserMeDto
 import com.dimapp.android.homeyautomotive.api.models.ZoneDto
@@ -100,6 +103,40 @@ interface HomeyApiService {
     ): Response<Unit>
 
     /**
+     * Retrieves all Advanced Flows defined in Homey.
+     *
+     * Returns a flat map of advanced flow UUID → [FlowDto].
+     *
+     * @public
+     * @return Map of advanced flow ID → [FlowDto], or an error [Response].
+     */
+    @GET("manager/flow/advancedflow")
+    suspend fun getAdvancedFlows(): Response<Map<String, FlowDto>>
+
+    /**
+     * Triggers a Homey Advanced Flow by its UUID.
+     *
+     * @public
+     * @param flowId UUID of the advanced flow to trigger.
+     * @return Empty [Response] on success (HTTP 200).
+     */
+    @POST("manager/flow/advancedflow/{flowId}/trigger")
+    suspend fun triggerAdvancedFlow(
+        @Path("flowId") flowId: String
+    ): Response<Unit>
+
+    /**
+     * Retrieves all flow folders defined in Homey.
+     *
+     * Returns a flat map of folder UUID → [FlowFolderDto].
+     *
+     * @public
+     * @return Map of folder ID → [FlowFolderDto], or an error [Response].
+     */
+    @GET("manager/flow/flowfolder")
+    suspend fun getFlowFolders(): Response<Map<String, FlowFolderDto>>
+
+    /**
      * Retrieves all zones (rooms) defined in Homey.
      *
      * Returns a flat map of zone UUID → [ZoneDto]. Zones form a hierarchy
@@ -148,4 +185,16 @@ interface HomeyApiService {
      */
     @GET("app/com.dimapp.aaos/dashboards")
     suspend fun getDashboards(): Response<Map<String, DashboardDto>>
+
+    /**
+     * Triggers a Flow (standard or advanced) via the Companion App HomeyScript proxy.
+     *
+     * @public
+     * @param body [FlowTriggerRequestDto] with flow ID and isAdvanced flag.
+     * @return [Response] containing [FlowTriggerResponseDto].
+     */
+    @POST("app/com.dimapp.aaos/flow/trigger")
+    suspend fun triggerCompanionFlow(@Body body: FlowTriggerRequestDto): Response<FlowTriggerResponseDto>
 }
+
+

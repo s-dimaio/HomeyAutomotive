@@ -89,7 +89,7 @@ object HomeyApiClient {
 
         if (debug) {
             builder.addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BASIC
+                level = HttpLoggingInterceptor.Level.BODY
             })
         }
 

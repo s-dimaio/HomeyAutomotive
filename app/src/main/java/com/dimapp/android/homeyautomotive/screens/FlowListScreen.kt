@@ -190,7 +190,7 @@ class FlowListScreen(carContext: CarContext) : Screen(carContext) {
         invalidate()
 
         scope.launch {
-            val result = repository.triggerFlow(flow.id)
+            val result = repository.triggerFlow(flow.id, flow.isAdvanced)
             triggeringFlowId = null
 
             CarToast.makeText(

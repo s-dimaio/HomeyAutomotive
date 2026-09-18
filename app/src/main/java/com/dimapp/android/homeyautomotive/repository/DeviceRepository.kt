@@ -1,7 +1,9 @@
 package com.dimapp.android.homeyautomotive.repository
 
 import android.content.Context
+import com.dimapp.android.homeyautomotive.BuildConfig
 import com.dimapp.android.homeyautomotive.R
+import com.dimapp.android.homeyautomotive.api.HomeyCompanionApiClient
 import com.dimapp.android.homeyautomotive.api.models.DeviceDto
 import com.dimapp.android.homeyautomotive.api.models.SetCapabilityBody
 import com.dimapp.android.homeyautomotive.api.models.ZoneDto
@@ -13,9 +15,6 @@ import com.dimapp.android.homeyautomotive.repository.models.HomeyDevice
 import com.dimapp.android.homeyautomotive.repository.models.HomeyResult
 import com.dimapp.android.homeyautomotive.auth.HomeyAuthRepository
 import com.dimapp.android.homeyautomotive.storage.TokenStorage
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import android.util.Log
@@ -32,8 +31,150 @@ class DeviceRepository(
     private val TAG = "DeviceRepository"
     private val cacheMutex = Mutex()
     private var cachedDevices: List<HomeyDevice>? = null
+    private var cachedZones: Map<String, ZoneDto>? = null
     private var cachedHubId: String? = null
+    private var cachedZoneTemperatures: Map<String, Double> = emptyMap()
+    private var cachedIndoorTemperature: Double? = null
+    private var cachedOutdoorTemperature: Double? = null
+    private var cachedThermometersConfig: Map<String, String>? = null
     private var demoDevices: MutableList<HomeyDevice>? = null
+
+    /**
+     * Returns the latest computed average temperatures mapped by zone name.
+     *
+     * Public method.
+     *
+     * @return Map of zone name to average temperature in degrees Celsius.
+     * @example
+     * val temps = repo.getZoneTemperatures()
+     */
+    fun getZoneTemperatures(): Map<String, Double> {
+        return cachedZoneTemperatures
+    }
+
+    /**
+     * Returns the latest computed average indoor temperature across indoor-configured thermometers.
+     *
+     * Public method.
+     *
+     * @return Average indoor temperature in degrees Celsius, or `null` if none available.
+     * @example
+     * val avgIndoor = repo.getAverageIndoorTemperature()
+     */
+    fun getAverageIndoorTemperature(): Double? {
+        return cachedIndoorTemperature
+    }
+
+    /**
+     * Returns the latest computed average outdoor temperature across outdoor-configured thermometers.
+     *
+     * Public method.
+     *
+     * @return Average outdoor temperature in degrees Celsius, or `null` if none available.
+     * @example
+     * val avgOutdoor = repo.getAverageOutdoorTemperature()
+     */
+    fun getAverageOutdoorTemperature(): Double? {
+        return cachedOutdoorTemperature
+    }
+
+    /**
+     * Returns the computed average home temperature.
+     *
+     * Public method.
+     * Prioritizes indoor temperature, falling back to outdoor temperature if indoor is unavailable.
+     *
+     * @return Average temperature in degrees Celsius, or `null` if no temperature readings are available.
+     * @example
+     * val avgTemp = repo.getAverageHomeTemperature()
+     */
+    fun getAverageHomeTemperature(): Double? {
+        return cachedIndoorTemperature ?: cachedOutdoorTemperature
+    }
+
+    /**
+     * Silently fetches the latest thermometer classification configuration from the companion app.
+     *
+     * @private
+     * @param hubId The ID of the currently selected Homey hub.
+     */
+    private suspend fun _syncThermometersConfig(hubId: String) {
+        try {
+            val companionService = HomeyCompanionApiClient.create(hubId, BuildConfig.DEBUG)
+            cachedThermometersConfig = companionService.getThermometersConfig().config
+            Log.d(TAG, "[DeviceRepository:_syncThermometersConfig] Loaded ${cachedThermometersConfig?.size ?: 0} thermometer configurations.")
+        } catch (e: Exception) {
+            Log.w(TAG, "[DeviceRepository:_syncThermometersConfig] Failed to fetch thermometer configuration: ${e.message}")
+            if (cachedThermometersConfig == null) {
+                cachedThermometersConfig = emptyMap()
+            }
+        }
+    }
+
+    /**
+     * Calculates room temperatures and overall indoor/outdoor home averages from raw device DTOs,
+     * respecting Homey's native climate exclusions and the companion app's thermometer classifications.
+     *
+     * Devices marked with `climate_exclude: true` or set to ignored are excluded from both room averages
+     * and home indoor/outdoor calculations.
+     *
+     * @private
+     * @param devices The map of raw [DeviceDto] objects.
+     * @param zones The map of [ZoneDto] objects.
+     */
+    private fun _computeTemperatures(
+        devices: Map<String, DeviceDto>,
+        zones: Map<String, ZoneDto>
+    ) {
+        val zoneTempReadings = mutableMapOf<String, MutableList<Double>>()
+        val indoorReadings = mutableListOf<Double>()
+        val outdoorReadings = mutableListOf<Double>()
+
+        for (dto in devices.values) {
+            // Respect Homey native climate exclusion (advanced device settings or climate tab) and hidden devices
+            if (dto.settings?.climateExclude == true || dto.hidden == true) {
+                continue
+            }
+
+            val caps = dto.capabilitiesObj ?: continue
+            val tempCap = caps["measure_temperature"]
+            val tempVal = (tempCap?.value as? Number)?.toDouble() ?: continue
+            if (tempVal.isNaN()) continue
+
+            val mode = cachedThermometersConfig?.get(dto.id) ?: "indoor"
+            when (mode) {
+                "ignored" -> {
+                    // Legacy setting: excluded from room average and from home indoor/outdoor
+                }
+                "outdoor" -> {
+                    outdoorReadings.add(tempVal)
+                    val zoneId = dto.zone
+                    if (zoneId != null) {
+                        zoneTempReadings.getOrPut(zoneId) { mutableListOf() }.add(tempVal)
+                    }
+                }
+                else -> { // "indoor" or unconfigured default
+                    indoorReadings.add(tempVal)
+                    val zoneId = dto.zone
+                    if (zoneId != null) {
+                        zoneTempReadings.getOrPut(zoneId) { mutableListOf() }.add(tempVal)
+                    }
+                }
+            }
+        }
+
+        val computedTemps = mutableMapOf<String, Double>()
+        for ((zId, readings) in zoneTempReadings) {
+            if (readings.isNotEmpty()) {
+                val zonePathName = _buildZonePathName(zId, zones)
+                computedTemps[zonePathName] = readings.average()
+            }
+        }
+        cachedZoneTemperatures = computedTemps
+        cachedIndoorTemperature = if (indoorReadings.isNotEmpty()) indoorReadings.average() else null
+        cachedOutdoorTemperature = if (outdoorReadings.isNotEmpty()) outdoorReadings.average() else null
+        Log.d(TAG, "[DeviceRepository:_computeTemperatures] Indoor: $cachedIndoorTemperature, Outdoor: $cachedOutdoorTemperature, Zones: ${computedTemps.size}")
+    }
 
 
     /**
@@ -45,6 +186,12 @@ class DeviceRepository(
     suspend fun getDevices(forceRefresh: Boolean = false): HomeyResult<List<HomeyDevice>> = cacheMutex.withLock {
         // Handle Demo Mode directly without network interaction
         if (storage.isDemoMode()) {
+            cachedZoneTemperatures = mapOf(
+                context.getString(R.string.demo_zone_ground_floor) to 21.5,
+                context.getString(R.string.demo_zone_outside) to 18.0
+            )
+            cachedIndoorTemperature = 21.5
+            cachedOutdoorTemperature = 18.0
             if (demoDevices == null || forceRefresh) {
                 demoDevices = _createDemoDevices().toMutableList()
                 Log.d(TAG, "Initialized demo devices list with ${demoDevices?.size} mock devices.")
@@ -95,6 +242,12 @@ class DeviceRepository(
             val zones = zonesResponse.body() ?: emptyMap()
             val favoritesList = userResponse.body()?.properties?.favoriteDevices ?: emptyList()
 
+            // Fetch thermometer classifications from companion app and compute room / home temperatures
+            if (forceRefresh || cachedThermometersConfig == null) {
+                _syncThermometersConfig(currentHubId)
+            }
+            _computeTemperatures(devices, zones)
+
             val excludedIds = devices.values
                 .flatMap { it.settings?.deviceIds ?: emptyList() }
                 .toSet()
@@ -108,12 +261,13 @@ class DeviceRepository(
 
             // 3. Update cache
             cachedDevices = mappedDevices
+            cachedZones = zones
             cachedHubId = currentHubId
             
-            Log.d(TAG, "Fetched ${mappedDevices.size} devices from network and saved to cache.")
+            Log.d(TAG, "[DeviceRepository:getDevices] Fetched ${mappedDevices.size} devices from network and saved to cache.")
             HomeyResult.Success(mappedDevices)
         } catch (e: Exception) {
-            Log.e(TAG, "Exception during getDevices: ${e.message}", e)
+            Log.e(TAG, "[DeviceRepository:getDevices] Exception during getDevices: ${e.message}", e)
             HomeyResult.Error(context.getString(R.string.repo_error_conn_failed, e.message ?: "Unknown error"))
         }
     }
@@ -123,9 +277,14 @@ class DeviceRepository(
      * Use this for manual refresh flows or after significant configuration changes.
      */
     fun invalidateCache() {
-        Log.d(TAG, "Device cache invalidated.")
+        Log.d(TAG, "[DeviceRepository:invalidateCache] Device cache invalidated.")
         cachedDevices = null
+        cachedZones = null
         cachedHubId = null
+        cachedZoneTemperatures = emptyMap()
+        cachedIndoorTemperature = null
+        cachedOutdoorTemperature = null
+        cachedThermometersConfig = null
         demoDevices = null
     }
 
@@ -184,43 +343,91 @@ class DeviceRepository(
     }
 
     /**
-     * Synchronizes the state (on/off, open/closed) of a subset of devices.
+     * Synchronizes device states using a single bulk request to Homey API (`GET /manager/devices/device`).
+     *
+     * Public method.
+     * Efficiently fetches all device objects and capability values in a single HTTP call,
+     * updates the in-memory cache, recalculates zone temperatures if zones are cached,
+     * and returns the updated subset of [currentDevices].
+     *
+     * @public
+     * @param currentDevices The list of [HomeyDevice] objects to update with fresh states.
+     * @return [HomeyResult.Success] containing updated devices, or [HomeyResult.Error] on failure.
+     * @example
+     * val result = deviceRepository.syncDeviceStates(devices)
      */
     suspend fun syncDeviceStates(currentDevices: List<HomeyDevice>): HomeyResult<List<HomeyDevice>> {
         if (currentDevices.isEmpty()) return HomeyResult.Success(emptyList())
 
+        // Handle Demo Mode
+        if (storage.isDemoMode()) {
+            val list = demoDevices ?: _createDemoDevices().toMutableList()
+            demoDevices = list
+            val demoMap = list.associateBy { it.id }
+            val updated = currentDevices.map { demoMap[it.id] ?: it }
+            return HomeyResult.Success(updated)
+        }
+
         val service = _buildService() ?: return HomeyResult.Error(context.getString(R.string.repo_error_not_configured))
 
         return try {
-            val updatedDevices = coroutineScope {
-                currentDevices.map { device ->
-                    async {
-                        try {
-                            val response = service.getCapabilityObject(
-                                deviceId = device.id,
-                                capabilityId = device.primaryCapability
-                            )
-                            if (response.isSuccessful) {
-                                val body = response.body()
-                                val rawValue = body as? Boolean
-                                
-                                val newIsActive = when (device.primaryCapability) {
-                                    CAP_GARAGEDOOR -> rawValue == false
-                                    "locked"       -> rawValue == false
-                                    else           -> rawValue == true
-                                }
-                                device.copy(isActive = newIsActive)
-                            } else {
-                                device
-                            }
-                        } catch (e: Exception) {
-                            device
-                        }
-                    }
-                }.awaitAll()
+            val response = service.getDevices()
+            if (!response.isSuccessful) {
+                Log.e(TAG, "[DeviceRepository:syncDeviceStates] Bulk sync failed with HTTP ${response.code()}")
+                return HomeyResult.Error(context.getString(R.string.repo_error_devices_http, response.code()))
             }
+
+            val networkDevices = response.body() ?: emptyMap()
+
+            // Update average room temperatures if cachedZones are available
+            cachedZones?.let { zones ->
+                val currentHubId = storage.getSelectedHomeyId()
+                if (cachedThermometersConfig == null && currentHubId != null) {
+                    _syncThermometersConfig(currentHubId)
+                }
+                _computeTemperatures(networkDevices, zones)
+            }
+
+            val updatedDevices = currentDevices.map { device ->
+                val dto = networkDevices[device.id]
+                if (dto != null) {
+                    val caps = dto.capabilitiesObj ?: emptyMap()
+                    val rawValue = caps[device.primaryCapability]?.value as? Boolean
+                    val newIsActive = when (device.primaryCapability) {
+                        CAP_GARAGEDOOR -> rawValue == false
+                        "locked"       -> rawValue == false
+                        else           -> rawValue == true
+                    }
+                    val isAvail = dto.available != false
+                    device.copy(isActive = newIsActive, isAvailable = isAvail)
+                } else {
+                    device
+                }
+            }
+
+            // Keep in-memory cache synchronized as well
+            cacheMutex.withLock {
+                cachedDevices = cachedDevices?.map { cached ->
+                    val fresh = networkDevices[cached.id]
+                    if (fresh != null) {
+                        val caps = fresh.capabilitiesObj ?: emptyMap()
+                        val rawValue = caps[cached.primaryCapability]?.value as? Boolean
+                        val newIsActive = when (cached.primaryCapability) {
+                            CAP_GARAGEDOOR -> rawValue == false
+                            "locked"       -> rawValue == false
+                            else           -> rawValue == true
+                        }
+                        cached.copy(isActive = newIsActive, isAvailable = fresh.available != false)
+                    } else {
+                        cached
+                    }
+                }
+            }
+
+            Log.d(TAG, "[DeviceRepository:syncDeviceStates] Bulk sync succeeded for ${updatedDevices.size} devices via single HTTP call.")
             HomeyResult.Success(updatedDevices)
         } catch (e: Exception) {
+            Log.e(TAG, "[DeviceRepository:syncDeviceStates] Exception during bulk sync: ${e.message}", e)
             HomeyResult.Error(context.getString(R.string.repo_error_sync_failed, e.message ?: "Unknown error"))
         }
     }
@@ -257,6 +464,9 @@ class DeviceRepository(
         val zoneName = _buildZonePathName(device.zone, zones)
         val zoneOrder = device.zone?.let { globalZoneOrder[it] } ?: Int.MAX_VALUE
 
+        val isZoneActive = device.zone?.let { zones[it]?.active } == true
+        val devTemp = (caps["measure_temperature"]?.value as? Number)?.toDouble()
+
         return HomeyDevice(
             id = device.id,
             name = device.name,
@@ -274,7 +484,10 @@ class DeviceRepository(
             isLight = (device.effectiveClass?.lowercase() in LIGHT_CLASSES),
             isHidden = device.hidden == true,
             isGroupMember = excludedIds.contains(device.id),
-            zoneOrder = zoneOrder
+            zoneOrder = zoneOrder,
+            zoneId = device.zone,
+            isZoneActive = isZoneActive,
+            temperature = devTemp
         )
     }
 
@@ -348,7 +561,9 @@ class DeviceRepository(
                 isLight = true,
                 isHidden = false,
                 isGroupMember = false,
-                zoneOrder = 1
+                zoneOrder = 1,
+                zoneId = "demo_zone_ground_floor",
+                isZoneActive = true
             ),
             HomeyDevice(
                 id = "demo_light_2",
@@ -363,7 +578,9 @@ class DeviceRepository(
                 isLight = true,
                 isHidden = false,
                 isGroupMember = false,
-                zoneOrder = 1
+                zoneOrder = 1,
+                zoneId = "demo_zone_ground_floor",
+                isZoneActive = true
             ),
             HomeyDevice(
                 id = "demo_light_3",
@@ -378,7 +595,9 @@ class DeviceRepository(
                 isLight = true,
                 isHidden = false,
                 isGroupMember = false,
-                zoneOrder = 2
+                zoneOrder = 2,
+                zoneId = "demo_zone_outside",
+                isZoneActive = false
             ),
             HomeyDevice(
                 id = "demo_door_1",
@@ -393,7 +612,9 @@ class DeviceRepository(
                 isLight = false,
                 isHidden = false,
                 isGroupMember = false,
-                zoneOrder = 1
+                zoneOrder = 1,
+                zoneId = "demo_zone_ground_floor",
+                isZoneActive = true
             ),
             HomeyDevice(
                 id = "demo_garage_1",
@@ -408,7 +629,9 @@ class DeviceRepository(
                 isLight = false,
                 isHidden = false,
                 isGroupMember = false,
-                zoneOrder = 2
+                zoneOrder = 2,
+                zoneId = "demo_zone_outside",
+                isZoneActive = false
             )
         )
     }

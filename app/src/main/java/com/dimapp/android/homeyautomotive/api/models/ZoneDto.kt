@@ -16,5 +16,6 @@ data class ZoneDto(
     @SerializedName("id") val id: String,
     @SerializedName("name") val name: String,
     @SerializedName("parent") val parent: String? = null,
-    @SerializedName("sortIndex") val sortIndex: Int? = null
+    @SerializedName("sortIndex") val sortIndex: Int? = null,
+    @SerializedName("active") val active: Boolean? = false
 )

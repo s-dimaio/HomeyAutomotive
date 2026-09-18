@@ -5,7 +5,7 @@
 
     <!-- SettingsScreen -->
     <string name="settings_clear_icon_cache">Clear Cache</string>
-    <string name="settings_clear_icon_cache_desc">Refresh device list and all icons</string>
+    <string name="settings_clear_icon_cache_desc">Refresh devices, flows, and all icons</string>
     <string name="settings_home_tab_source">Home Tab</string>
     <string name="settings_sync_interval">Update interval</string>
     <string name="settings_sync_interval_label">Update interval</string>
@@ -17,7 +17,7 @@
 
 
 
-    <string name="settings_cache_cleared">Cache cleared (Devices &amp; Icons).</string>
+    <string name="settings_cache_cleared">Cache cleared (Devices, Flows &amp; Icons).</string>
     <string name="settings_cache_error">Error clearing cache.</string>
     <string name="settings_saved">Settings saved.</string>
 
@@ -45,11 +45,14 @@
 
     <!-- MainTabScreen -->
     <string name="tab_home_title">Home</string>
+    <string name="tab_devices_title">Devices</string>
+    <string name="tab_flows_title">Flows</string>
     <string name="tab_locks_title">Locks</string>
     <string name="tab_lights_title">Lights</string>
     <string name="tab_settings_title">Settings</string>
     <string name="main_error_load_devices">Unable to load devices.\n\n%s</string>
     <string name="main_retry_button">Retry</string>
+    <string name="main_no_devices">No compatible devices found.</string>
     <string name="main_no_locks">No locks found.</string>
     <string name="main_no_lights">No lights found.</string>
     <string name="main_error_dashboard_load">Error loading Dashboard: %s</string>
@@ -60,6 +63,25 @@
     <string name="device_state_off">Off</string>
     <string name="device_state_open">Open</string>
     <string name="device_state_closed">Closed</string>
+    
+    <!-- Home Overview & Zone Summary -->
+    <string name="home_overview_title">Home Overview</string>
+    <string name="home_overview_all_secure">All access points secured</string>
+    <string name="home_overview_open_count">%d access points open</string>
+    <string name="home_overview_open_single">1 access point open</string>
+    <string name="home_overview_lights_off">All lights off</string>
+    <string name="home_overview_lights_on_count">%d lights on</string>
+    <string name="home_overview_lights_on_single">1 light on</string>
+    <string name="home_overview_avg_temp">Average temperature: %s</string>
+    <string name="home_overview_temp_indoor">Int. %s</string>
+    <string name="home_overview_temp_outdoor">Ext. %s</string>
+    <string name="zone_lights_on_count">%d lights on</string>
+    <string name="zone_lights_on_single">1 light on</string>
+    <string name="zone_lights_off">All lights off</string>
+    <string name="zone_barriers_open_count">%d access points open</string>
+    <string name="zone_barriers_open_single">1 access point open</string>
+    <string name="zone_barriers_secure">All access points secured</string>
+    <string name="flows_tab_coming_soon">Flows will be available here soon</string>
     
     <!-- HomeyRepository -->
     <string name="repo_error_not_configured">Homey not configured. Check settings.</string>
@@ -72,6 +94,7 @@
     <string name="repo_error_network">Network error: %s</string>
     <string name="repo_success_flow">Flow started successfully</string>
     <string name="repo_error_flow_trigger_http">HTTP Error %d: unable to start Flow</string>
+    <string name="repo_error_flow_homeyscript_missing">HomeyScript app is not installed on Homey Pro. Please install it from the Homey App Store to trigger flows.</string>
     <string name="repo_error_sync_failed">Sync failed: %s</string>
     <string name="repo_error_auth_failed">Authentication failed: HTTP %d. Check PAT and Homey ID.</string>
     <string name="repo_error_dashboard_not_found">Dashboard \'%s\' not found.</string>
@@ -132,6 +155,11 @@
     <string name="demo_zone_outside">Outside</string>
     <string name="demo_flow_leaving_home">Leaving Home</string>
     <string name="demo_flow_arriving_home">Arriving Home</string>
+    <string name="demo_flow_goodnight">Goodnight &amp; Lock All</string>
+    <string name="demo_flow_welcome">Courtesy Access Open</string>
+    <string name="demo_folder_automations">Automations</string>
+    <string name="demo_folder_security">Security</string>
+    <string name="flows_general_folder">No Folder</string>
 
     <!-- HomeySelectionScreen -->
     <string name="homey_selection_title">Homey Account</string>
@@ -174,9 +202,9 @@
 
     <!-- PermissionScreen (Google Play Compliant Prominent Disclosure) -->
     <string name="permission_screen_title">Location &amp; Smart Alerts</string>
-    <string name="permission_step0_message">Homey collects location data to enable smart geofencing features, including departure warnings if a garage door or smart lock is left open and arrival prompts to open gates or doors, even when the app is closed or not in use.\n\nUsage &amp; Privacy:\n• Your precise location is accessed in real time solely to detect proximity to your home geofence.\n• All location processing occurs locally on your vehicle.\n• Location data is never used for advertising, never sold, and never shared with third parties or stored on external servers.\n\nThis feature is completely optional. You can decline and continue using all other features of Homey normally.</string>
-    <string name="permission_step1_message">To deliver automated arrival and departure alerts while driving, Homey requires background location access.\n\nIn the next system dialog, please select \"Allow all the time\". This allows Homey to detect your home boundary even when the app is closed or not in use.\n\nYour location data is processed strictly on the vehicle and is never shared or stored.</string>
-    <string name="permission_granted_message">All set! Background geofence alerts are now active.</string>
+    <string name="permission_step0_message">Homey for Android Automotive collects location data (precise GPS coordinates) to detect when your vehicle approaches or departs from your home. This enables automatic safety alerts if a garage door or lock is left open as you leave, and arrival shortcuts to open gates with a single tap as you return, even when the app is closed or not in use.\n\nOptional Permission:\nGranting location access is completely optional. If you decline, all other features of Homey—including manual device control, lights, locks, and Flows—will continue to work normally without any disruption. Only automated arrival and departure alerts will be unavailable.\n\nPrivacy &amp; Security:\nLocation data is processed exclusively on your vehicle in real time. Your location is never shared with third parties, never sold, never stored on external servers, and never used for advertising or tracking.</string>
+    <string name="permission_step1_message">To detect vehicle arrival and departure while driving, Homey for Android Automotive requires background location permission.\n\nIn the next system dialog, please select \"Allow all the time\". This allows the app to detect when your car reaches or leaves your home area even when the app is closed or not in use.\n\nLocation processing is strictly local to your vehicle and is never shared or stored.</string>
+    <string name="permission_granted_message">All set! Background proximity alerts are now active.</string>
     <string name="permission_foreground_only_message">Foreground location granted. Smart Alerts are active while Homey is open on your car display.\n\nTo receive alerts when the app is closed, set location to \"Allow all the time\" in vehicle Settings → Apps → Homey.</string>
     <string name="permission_denied_message">Location access was declined. Proximity alerts cannot be activated without location permission. You can enable it at any time in vehicle Settings → Apps → Homey.</string>
     <string name="permission_btn_enable">Agree &amp; Continue</string>

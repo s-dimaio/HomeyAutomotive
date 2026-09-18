@@ -81,10 +81,12 @@ data class CapabilityDto(
  * DTO for the device settings object.
  *
  * Public data class.
- * Contains configuration specific to the device or app (e.g. `deviceIds` for grouped devices).
+ * Contains configuration specific to the device or app (e.g. `deviceIds` for grouped devices, `climate_exclude`).
  *
  * @property deviceIds Array of child device IDs if this device is a group.
+ * @property climateExclude Whether this device is excluded from Homey climate calculations.
  */
 data class SettingsDto(
-    @SerializedName("deviceIds") val deviceIds: List<String>? = null
+    @SerializedName("deviceIds") val deviceIds: List<String>? = null,
+    @SerializedName("climate_exclude") val climateExclude: Boolean? = false
 )
