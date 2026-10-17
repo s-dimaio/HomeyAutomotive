@@ -176,23 +176,38 @@ class FlowRepository(
             ?: return HomeyResult.Error(context.getString(R.string.repo_error_not_configured))
 
         return try {
-            val response = service.triggerCompanionFlow(
+            // First attempt: trigger directly via official Homey REST API
+            val directResponse = if (isAdvanced) {
+                service.triggerAdvancedFlow(flowId)
+            } else {
+                service.triggerFlow(flowId)
+            }
+
+            if (directResponse.isSuccessful) {
+                Log.d(TAG, "[FlowRepository:triggerFlow] Flow '$flowId' (isAdvanced=$isAdvanced) triggered successfully via direct API.")
+                return HomeyResult.Success(context.getString(R.string.repo_success_flow))
+            }
+
+            Log.w(TAG, "[FlowRepository:triggerFlow] Direct flow trigger returned HTTP ${directResponse.code()}, falling back to companion proxy...")
+
+            // Fallback attempt: trigger via companion app proxy
+            val companionResponse = service.triggerCompanionFlow(
                 FlowTriggerRequestDto(id = flowId, isAdvanced = isAdvanced)
             )
-            if (response.isSuccessful && response.body()?.success == true) {
+            if (companionResponse.isSuccessful && companionResponse.body()?.success == true) {
                 Log.d(TAG, "[FlowRepository:triggerFlow] Flow '$flowId' (isAdvanced=$isAdvanced) triggered successfully via companion.")
                 HomeyResult.Success(context.getString(R.string.repo_success_flow))
             } else {
-                val errorBody = response.errorBody()?.string().orEmpty()
-                val responseBodyError = response.body()?.error.orEmpty()
-                Log.e(TAG, "[FlowRepository:triggerFlow] Trigger flow '$flowId' failed: HTTP ${response.code()} - errorBody: $errorBody, responseError: $responseBodyError")
+                val errorBody = companionResponse.errorBody()?.string().orEmpty()
+                val responseBodyError = companionResponse.body()?.error.orEmpty()
+                Log.e(TAG, "[FlowRepository:triggerFlow] Trigger flow '$flowId' failed: HTTP ${companionResponse.code()} - errorBody: $errorBody, responseError: $responseBodyError")
 
                 if (errorBody.contains("HOMEYSCRIPT", ignoreCase = true) ||
                     responseBodyError.contains("HOMEYSCRIPT", ignoreCase = true)
                 ) {
                     HomeyResult.Error(context.getString(R.string.repo_error_flow_homeyscript_missing))
                 } else {
-                    HomeyResult.Error(context.getString(R.string.repo_error_flow_trigger_http, response.code()))
+                    HomeyResult.Error(context.getString(R.string.repo_error_flow_trigger_http, companionResponse.code()))
                 }
             }
         } catch (e: Exception) {
@@ -236,7 +251,8 @@ class FlowRepository(
                 triggerable = true,
                 enabled = true,
                 folder = "demo_folder_security",
-                folderName = securityFolder
+                folderName = securityFolder,
+                isAdvanced = true
             ),
             FlowDto(
                 id = "demo_flow_4",

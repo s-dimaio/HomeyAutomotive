@@ -205,12 +205,18 @@ class OAuthSignInScreen(
                     is PollResult.Success -> {
                         timeoutJob?.cancel()
                         
-                        // Switch to an safe non-auth template before navigating
+                        // Switch to a safe non-auth template before navigating
                         state = State.LOADING
                         invalidate()
 
-                        Log.d(TAG, "Authentication complete — returning to root (isAddingHub=$isAddingHub).")
-                        screenManager.popToRoot()
+                        Log.d(TAG, "Authentication complete — navigating (isAddingHub=$isAddingHub).")
+                        if (isAddingHub) {
+                            screenManager.pop()
+                            screenManager.pop()
+                        } else {
+                            screenManager.popToRoot()
+                            screenManager.push(MainTabScreen(carContext))
+                        }
                         return@launch
                     }
                     is PollResult.Expired -> {

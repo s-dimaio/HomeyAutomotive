@@ -22,6 +22,7 @@ import com.dimapp.android.homeyautomotive.storage.HomeSource
 import com.dimapp.android.homeyautomotive.storage.TokenStorage
 import com.dimapp.android.homeyautomotive.core.DependencyManager
 import com.dimapp.android.homeyautomotive.geofence.GeofenceManager
+import com.dimapp.android.homeyautomotive.geofence.GeofenceReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -164,17 +165,45 @@ class SettingsScreen(carContext: CarContext) : Screen(carContext) {
                     .build()
             )
 
-            // ── Geofencing & Smart Alerts ────────────────────────────────────
+            // ── Home Location & Proximity Alerts ─────────────────────────────
             val hasFinePerm = GeofenceManager.hasFineLocationPermission(carContext)
             val hasBgPerm = GeofenceManager.hasBackgroundLocationPermission(carContext)
             val homeCoords = storage.getHomeLocation()
             val isFenceEnabled = storage.isGeofenceEnabled()
 
+            // 1. Home Location Master Switch (toggles geofence registration and home coordinates)
+            val locationStatusText = if (isDemo) {
+                carContext.getString(R.string.settings_home_location_active, 52.13263, 5.29127)
+            } else {
+                homeCoords?.let {
+                    carContext.getString(R.string.settings_home_location_active, it.first, it.second)
+                } ?: carContext.getString(R.string.settings_home_location_disabled)
+            }
+
+            listBuilder.addItem(
+                Row.Builder()
+                    .setTitle(carContext.getString(R.string.settings_home_location_title))
+                    .addText(locationStatusText)
+                    .setOnClickListener {
+                        if (isDemo) {
+                            GeofenceReceiver.postDemoArrivalNotification(carContext)
+                            CarToast.makeText(carContext, R.string.demo_notif_triggered_toast, CarToast.LENGTH_SHORT).show()
+                        } else if (!hasFinePerm) {
+                            screenManager.push(PermissionScreen(carContext))
+                        } else {
+                            _toggleHomeLocation()
+                        }
+                    }
+                    .build()
+            )
+
+            // 2. Proximity Alerts (in-car heads-up notifications with quick action buttons)
             val fenceStatusText = when {
+                isDemo -> carContext.getString(R.string.settings_geofence_status_active, 300f)
                 !hasFinePerm -> carContext.getString(R.string.settings_geofence_status_no_perm)
                 homeCoords == null -> carContext.getString(R.string.settings_geofence_status_no_location)
                 !isFenceEnabled -> carContext.getString(R.string.settings_geofence_status_disabled)
-                !hasBgPerm -> carContext.getString(R.string.settings_geofence_status_foreground_only)
+                !hasBgPerm -> carContext.getString(R.string.settings_geofence_status_foreground_only, storage.getGeofenceRadius())
                 else -> carContext.getString(R.string.settings_geofence_status_active, storage.getGeofenceRadius())
             }
 
@@ -182,28 +211,24 @@ class SettingsScreen(carContext: CarContext) : Screen(carContext) {
                 Row.Builder()
                     .setTitle(carContext.getString(R.string.settings_geofence_status_title))
                     .addText(fenceStatusText)
-                    .setBrowsable(!hasFinePerm)
+                    .setBrowsable(!hasFinePerm && !isDemo)
                     .setOnClickListener {
-                        if (!hasFinePerm) {
+                        if (isDemo) {
+                            GeofenceReceiver.postDemoArrivalNotification(carContext)
+                            CarToast.makeText(carContext, R.string.demo_notif_triggered_toast, CarToast.LENGTH_SHORT).show()
+                        } else if (!hasFinePerm) {
                             screenManager.push(PermissionScreen(carContext))
                         } else if (homeCoords == null) {
-                            _refreshHomeCoordinates()
+                            CarToast.makeText(carContext, R.string.settings_home_location_configure_first_toast, CarToast.LENGTH_SHORT).show()
                         } else {
-                            val newEnabled = !isFenceEnabled
-                            storage.setGeofenceEnabled(newEnabled)
-                            if (newEnabled) {
-                                GeofenceManager.reregisterFromStorage(carContext)
-                            } else {
-                                GeofenceManager.removeGeofence(carContext)
-                            }
-                            invalidate()
+                            _cycleGeofenceRadius()
                         }
                     }
                     .build()
             )
 
-            // Dedicated row to upgrade to background alerts if only fine location is granted
-            if (hasFinePerm && !hasBgPerm && isFenceEnabled) {
+            // 3. Dedicated row to upgrade to background alerts if only fine location is granted
+            if (hasFinePerm && !hasBgPerm && !isDemo) {
                 listBuilder.addItem(
                     Row.Builder()
                         .setTitle(carContext.getString(R.string.settings_geofence_upgrade_bg_title))
@@ -215,20 +240,6 @@ class SettingsScreen(carContext: CarContext) : Screen(carContext) {
                         .build()
                 )
             }
-
-
-            // Home Coordinates refresh
-            val coordsText = homeCoords?.let {
-                carContext.getString(R.string.settings_geofence_coords_format, it.first, it.second)
-            } ?: carContext.getString(R.string.settings_geofence_coords_not_set)
-
-            listBuilder.addItem(
-                Row.Builder()
-                    .setTitle(carContext.getString(R.string.settings_geofence_refresh_coords))
-                    .addText(coordsText)
-                    .setOnClickListener { _refreshHomeCoordinates() }
-                    .build()
-            )
 
             // Clear icon cache
             listBuilder.addItem(
@@ -291,11 +302,16 @@ class SettingsScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     /**
-     * Refreshes the home coordinates from the active Homey hub and re-registers the geofence.
+     * Toggles Home Location configuration on user click:
+     * - Active -> Deactivates it: removes the geofence perimeter from Google Play Services, clears saved
+     *   home coordinates from storage, sets proximity alerts to disabled, and silences Homey Flow triggers.
+     * - Inactive -> Activates it: fetches updated home coordinates from Homey Pro, stores them, registers the
+     *   geofence perimeter with Google Play Services (resuming Homey Flow triggers), while keeping in-car proximity
+     *   notifications disabled until explicitly turned on by the user.
      *
-     * @private
+     * Private method.
      */
-    private fun _refreshHomeCoordinates() {
+    private fun _toggleHomeLocation() {
         if (storage.isDemoMode()) {
             CarToast.makeText(
                 carContext,
@@ -304,21 +320,72 @@ class SettingsScreen(carContext: CarContext) : Screen(carContext) {
             ).show()
             return
         }
-        scope.launch {
-            try {
-                val coords = authRepo.refreshHomeLocation()
-                if (coords != null) {
-                    CarToast.makeText(carContext, R.string.settings_geofence_coords_success, CarToast.LENGTH_SHORT).show()
-                    GeofenceManager.reregisterFromStorage(carContext)
-                    invalidate()
-                } else {
-                    CarToast.makeText(carContext, R.string.settings_geofence_coords_error, CarToast.LENGTH_SHORT).show()
+
+        val currentCoords = storage.getHomeLocation()
+        if (currentCoords != null) {
+            // Deactivate Home Location: remove geofence perimeter and clear saved coordinates
+            GeofenceManager.removeGeofence(carContext)
+            storage.clearHomeLocation()
+            storage.setGeofenceEnabled(false)
+            CarToast.makeText(carContext, R.string.settings_home_location_deactivated_toast, CarToast.LENGTH_SHORT).show()
+            invalidate()
+        } else {
+            // Activate Home Location: fetch updated coordinates from Homey Pro and register geofence
+            scope.launch {
+                try {
+                    val coords = authRepo.refreshHomeLocation()
+                    if (coords != null) {
+                        storage.setGeofenceRadius(GeofenceManager.DEFAULT_RADIUS_METERS)
+                        storage.setGeofenceEnabled(false)
+                        GeofenceManager.reregisterFromStorage(carContext)
+                        CarToast.makeText(carContext, R.string.settings_home_location_activated_toast, CarToast.LENGTH_SHORT).show()
+                        invalidate()
+                    } else {
+                        CarToast.makeText(carContext, R.string.settings_home_location_error_toast, CarToast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "[SettingsScreen:_toggleHomeLocation] Failed to activate home location: ${e.message}", e)
+                    CarToast.makeText(carContext, R.string.settings_home_location_error_toast, CarToast.LENGTH_SHORT).show()
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "[SettingsScreen:_refreshHomeCoordinates] Failed to refresh location: ${e.message}", e)
-                CarToast.makeText(carContext, R.string.settings_geofence_coords_error, CarToast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    /**
+     * Cycles through geofence configuration states upon user click:
+     * Disabled -> 100m -> 200m -> 300m -> Disabled.
+     *
+     * Private method.
+     * Re-registers or removes the geofence perimeter immediately via [GeofenceManager]
+     * based on the new radius and triggers an in-place template refresh via [invalidate].
+     */
+    private fun _cycleGeofenceRadius() {
+        val isFenceEnabled = storage.isGeofenceEnabled()
+        val currentRadius = storage.getGeofenceRadius()
+
+        if (!isFenceEnabled) {
+            storage.setGeofenceRadius(100f)
+            storage.setGeofenceEnabled(true)
+            GeofenceManager.reregisterFromStorage(carContext)
+        } else {
+            when {
+                currentRadius <= 150f -> {
+                    storage.setGeofenceRadius(200f)
+                    GeofenceManager.reregisterFromStorage(carContext)
+                }
+                currentRadius <= 250f -> {
+                    storage.setGeofenceRadius(300f)
+                    GeofenceManager.reregisterFromStorage(carContext)
+                }
+                else -> {
+                    storage.setGeofenceEnabled(false)
+                    // The 300m perimeter is already registered with Google Play Services for Homey Flows.
+                    // Alerts are now suppressed on-screen without making a redundant IPC call.
+                    Log.d(TAG, "[SettingsScreen:_cycleGeofenceRadius] In-car alerts disabled; geofence perimeter kept active at 300m for Homey Flows.")
+                }
+            }
+        }
+        invalidate()
     }
 }
 

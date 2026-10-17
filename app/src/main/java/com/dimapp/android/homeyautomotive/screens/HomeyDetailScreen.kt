@@ -12,6 +12,7 @@ import com.dimapp.android.homeyautomotive.R
 import com.dimapp.android.homeyautomotive.api.HomeyPayload
 import com.dimapp.android.homeyautomotive.core.DependencyManager
 import com.dimapp.android.homeyautomotive.geofence.GeofenceManager
+import com.dimapp.android.homeyautomotive.geofence.GeofenceReceiver
 import com.dimapp.android.homeyautomotive.storage.TokenStorage
 
 /**
@@ -51,7 +52,11 @@ class HomeyDetailScreen(
                         storage.switchActiveHomey(homey.id)
                         DependencyManager.getDeviceRepository(carContext).invalidateCache()
                         DependencyManager.getFlowRepository(carContext).invalidateCache()
-                        GeofenceManager.reregisterFromStorage(carContext)
+                        if (homey.id == "demo") {
+                            GeofenceReceiver.postDemoArrivalNotification(carContext)
+                        } else {
+                            GeofenceManager.reregisterFromStorage(carContext)
+                        }
                         CarToast.makeText(
                             carContext,
                             carContext.getString(R.string.homey_selection_toast_active, homey.name),

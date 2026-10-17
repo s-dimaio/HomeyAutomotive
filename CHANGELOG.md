@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.2] - 2026-10-17
+
+### Added
+- **Cryptographic AAOS Host Validation (Phase 6 Hardening)**: Configured dual-mode host validation in `HomeyCarAppService.createHostValidator()`. Production release builds strictly enforce official Google Automotive Services (GAS) and OEM platform host certificate allowlists (`androidx.car.app.R.array.hosts_allowlist_sample`), safeguarding against host hijacking, while debug builds permit development hosts.
+- **Automated Network Header Redaction (Phase 7 Hardening)**: Enabled `.redactHeader("Authorization")` and `.redactHeader("x-homey-id")` on all OkHttp logging interceptors, preventing bearer authentication tokens and cloud identifiers from leaking in Logcat output.
+- **Sanitized HTTP Logger & PII Redaction (Phase 7 Hardening)**: Implemented `SanitizedHttpLogger` with Android ICU-compliant regex capturing groups, securely redacting 24-character hexadecimal Athom IDs (`677c***6f27`), 64-character session tokens in URLs (`?session=3ac05f06...***`), email addresses, and GPS coordinates across network traffic and repository logs.
+- **System Backup Protection (Phase 7 Hardening)**: Enforced `android:allowBackup="false"` in `AndroidManifest.xml` to prevent unauthorized extraction of encrypted credentials via ADB backups on vehicle head units.
+- **Interactive Demo Proximity Alert**: Added simulated proximity alert trigger in Demo Mode Settings, allowing instant testing of arrival notification banners with the mock gate barrier.
+
+## [1.9.1] - 2026-10-14
+
+### Added
+- **Multi-Hub Geofencing & Hub Context**: Extended geofencing and proximity notifications with multi-hub awareness, dynamically citing the active hub name ("Near Homey...", "Departure from Homey...").
+- **Dynamic Climate & Thermometers**: Integrated multi-thermometer capability aggregation (`measure_temperature`), computing real-time indoor average and outdoor readings dynamically within the Home Overview section header.
+
+## [1.9.0] - 2026-10-08
+
+### Added
+- **Granular Home Location & Proximity Controls**: Introduced dedicated Home Location toggle in Settings:
+  - Supports cycling through proximity radiuses (100m, 200m, 300m, or Alerts Disabled).
+  - Activating Home Location synchronizes coordinates from Homey Pro and registers the geofence perimeter with Google Play Services.
+  - Deactivating removes the geofence perimeter and clears stored coordinates.
+- **Bidirectional Geofence Flow Triggers**: Added `postGeofenceEvent` (`POST /geofence/event`) communicating vehicle arrivals and departures to the companion app to fire Homey Pro Flow trigger cards (`geofence_enter`, `geofence_exit`).
+- **Demo Mode Mock Barriers**: Added mock "Driveway Gate" device and expanded barrier test suite in Demo Mode.
+
+## [1.8.0] - 2026-09-21
+
+### Added
+- **Vector Graphics & Crisp Badges**: Replaced raster assets with official, high-resolution vector drawables for device state badges (Power on/off, Locked, Unlocked) and flow types (Standard Flow, Advanced Flow).
+- **Startup Connection Feedback**: Introduced a brief driver toast notification upon app launch confirming the connected Homey hub.
+- **Driving Restriction Notices**: Added clear in-motion summary notices informing drivers when extended lists are temporarily truncated for safety while driving.
+
+### Changed
+- **Driver Safety & Anti-Lockout (AAOS In-Place Refresh)**: Replaced terminal error and loading templates with in-place template refreshes (`GridTemplate` and `ListTemplate`), strictly avoiding step-limit exhaustion and preventing driver distraction lockouts while in motion.
+- **Optimized Startup Flow**: Eliminated redundant ghost screen pushes during startup, launching directly into `MainTabScreen` when an active hub is already paired.
+- **Enhanced Badge Resizing & Visual Balance**: Fine-tuned device tile badge scaling for optimal readability and contrast on automotive center displays.
+
 ## [1.7.0] - 2026-09-18
 
 ### Added

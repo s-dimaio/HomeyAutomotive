@@ -5,11 +5,16 @@ import android.util.Log
 import com.dimapp.android.homeyautomotive.BuildConfig
 import com.dimapp.android.homeyautomotive.api.HomeyCompanionApiClient
 import com.dimapp.android.homeyautomotive.api.RefreshAuthRequest
+import com.dimapp.android.homeyautomotive.api.SanitizedHttpLogger
 import com.dimapp.android.homeyautomotive.api.StartAuthRequest
 import com.dimapp.android.homeyautomotive.api.CompanionToken
 import com.dimapp.android.homeyautomotive.storage.TokenStorage
+import com.google.gson.JsonParser
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 private const val TAG = "HomeyAuthRepository"
 
@@ -73,12 +78,14 @@ class HomeyAuthRepository(
      * and persisted in [TokenStorage].
      *
      * @public
+     * @param hubId Optional target hub ID. Defaults to the currently active hub.
      * @return A valid `"Bearer <token>"` value, or `null` if not available.
      */
-    suspend fun getValidDelegationToken(): String? {
-        val sessionToken = storage.getHubSessionToken()
+    suspend fun getValidDelegationToken(hubId: String? = null): String? {
+        val sessionToken = storage.getHubSessionToken(hubId)
         if (sessionToken.isNullOrBlank()) {
-            Log.w(TAG, "No Hub session token found — Hub API calls will return 401.")
+            val target = hubId ?: storage.getSelectedHomeyId()
+            Log.w(TAG, "No Hub session token found for hub ${SanitizedHttpLogger.maskId(target)} — Hub API calls will return 401.")
             return null
         }
         return "Bearer $sessionToken"
@@ -91,38 +98,39 @@ class HomeyAuthRepository(
      *
      * @public
      * @param failedToken The token that failed with HTTP 401, if available. Used to prevent double-refreshes.
+     * @param hubId Optional target hub ID. Defaults to the currently active hub.
      * @return `true` if the refresh was successful (or already done by a concurrent request), `false` otherwise.
      */
-    suspend fun refreshHubSessionToken(failedToken: String? = null): Boolean = globalRefreshMutex.withLock {
+    suspend fun refreshHubSessionToken(failedToken: String? = null, hubId: String? = null): Boolean = globalRefreshMutex.withLock {
+        val targetId = hubId ?: storage.getSelectedHomeyId()
         // First check if the token was already refreshed by another concurrent thread
-        val currentTokenString = getValidDelegationToken()
+        val currentTokenString = getValidDelegationToken(targetId)
         if (failedToken != null && failedToken != currentTokenString && currentTokenString != null) {
-            Log.i(TAG, "Token was already refreshed by another concurrent request, skipping network call.")
+            Log.i(TAG, "Token for hub ${SanitizedHttpLogger.maskId(targetId)} was already refreshed by another concurrent request, skipping network call.")
             return@withLock true
         }
 
-        val homeyId = storage.getSelectedHomeyId()
-        val refreshSecret = storage.getHubRefreshSecret()
+        val refreshSecret = storage.getHubRefreshSecret(targetId)
 
-        if (homeyId.isNullOrBlank() || refreshSecret.isNullOrBlank()) {
-            Log.w(TAG, "Cannot refresh Hub session: missing homeyId or refreshSecret")
+        if (targetId.isNullOrBlank() || refreshSecret.isNullOrBlank()) {
+            Log.w(TAG, "Cannot refresh Hub session: missing targetId or refreshSecret for ${SanitizedHttpLogger.maskId(targetId)}")
             return@withLock false
         }
 
         return@withLock try {
-            val service = HomeyCompanionApiClient.create(homeyId, BuildConfig.DEBUG)
+            val service = HomeyCompanionApiClient.create(targetId, BuildConfig.DEBUG)
             val response = service.refreshAuth(RefreshAuthRequest(refreshSecret))
 
             if (!response.session_token.isNullOrBlank() && !response.athom_refresh_token.isNullOrBlank()) {
-                storage.updateActiveHubTokens(response.session_token, response.athom_refresh_token)
-                Log.i(TAG, "Hub session token refreshed successfully.")
+                storage.updateHubTokens(targetId, response.session_token, response.athom_refresh_token)
+                Log.i(TAG, "Hub session token refreshed successfully for ${SanitizedHttpLogger.maskId(targetId)}.")
                 true
             } else {
-                Log.e(TAG, "Hub session token refresh failed: invalid response payload.")
+                Log.e(TAG, "Hub session token refresh failed for ${SanitizedHttpLogger.maskId(targetId)}: invalid response payload.")
                 false
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Hub session token refresh failed with exception: ${e.message}")
+            Log.e(TAG, "Hub session token refresh failed for ${SanitizedHttpLogger.maskId(targetId)} with exception: ${e.message}")
             false
         }
     }
@@ -230,7 +238,7 @@ class HomeyAuthRepository(
                     _saveAuthData(token)
 
 
-                    Log.d(TAG, "Companion auth complete — tokens saved for hub: ${token.homey_id}")
+                    Log.d(TAG, "Companion auth complete — tokens saved for hub: ${SanitizedHttpLogger.maskId(token.homey_id)}")
                     PollResult.Success
                 }
                 "expired" -> {
@@ -301,8 +309,12 @@ class HomeyAuthRepository(
         }
         val refreshSecret = token.athom_refresh_token ?: return
 
-        // 1. Resolve hub name from token data (Companion App is Hub-centric, no multi-hub list)
-        val resolvedName = token.homey_name ?: "Homey"
+        // 1. Resolve hub name from token data, or query the REST API if generic/missing
+        var resolvedName = token.homey_name
+        if (resolvedName.isNullOrBlank() || resolvedName.equals("Homey", ignoreCase = true)) {
+            val liveName = fetchHubSystemName(apiUrl, sessionToken)
+            resolvedName = if (!liveName.isNullOrBlank()) liveName else "Homey"
+        }
 
         // 2. Save/Update hub token entry and mark as active
         storage.saveHubToken(
@@ -322,10 +334,89 @@ class HomeyAuthRepository(
         // 4. Persist home location if provided
         token.location?.let { loc ->
             storage.saveHomeLocation(loc.latitude, loc.longitude, homeyId)
-            Log.d(TAG, "Home location saved for hub $homeyId: (lat=***, lng=***)")
+            Log.d(TAG, "Home location saved for hub ${SanitizedHttpLogger.maskId(homeyId)}: (lat=***, lng=***)")
         }
 
-        Log.d(TAG, "Auth data successfully persisted for hub: $homeyId (Name: $resolvedName)")
+        Log.d(TAG, "Auth data successfully persisted for hub: ${SanitizedHttpLogger.maskId(homeyId)} (Name: $resolvedName)")
+    }
+
+    /**
+     * Fetches the system name for a specific Homey hub from the REST API.
+     *
+     * Public method.
+     * Queries `GET /manager/system/name` and falls back to `GET /manager/system` to resolve
+     * the user-defined name configured in Homey (e.g., "Veggia", "Modena").
+     *
+     * @param apiUrl The base API URL for the target Homey hub.
+     * @param sessionToken The OAuth2/Session Bearer token for authentication.
+     * @return The resolved user-configured system name, or `null` if unreachable.
+     * @example
+     * ```kotlin
+     * val name = authRepo.fetchHubSystemName("https://677c0a03023b9cf8cd156f27.connect.athom.com/api/", token)
+     * ```
+     */
+    fun fetchHubSystemName(apiUrl: String, sessionToken: String): String? {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
+            .build()
+
+        val baseUrl = apiUrl.trimEnd('/')
+
+        // Primary attempt: GET /manager/system/name
+        try {
+            val req1 = Request.Builder()
+                .url("$baseUrl/manager/system/name")
+                .header("Authorization", "Bearer $sessionToken")
+                .get()
+                .build()
+
+            client.newCall(req1).execute().use { res ->
+                if (res.isSuccessful) {
+                    val raw = res.body?.string()?.trim()
+                    if (!raw.isNullOrBlank()) {
+                        val parsed = JsonParser.parseString(raw)
+                        if (parsed.isJsonPrimitive) {
+                            val str = parsed.asString.trim()
+                            if (str.isNotBlank()) return str
+                        } else if (parsed.isJsonObject) {
+                            val obj = parsed.asJsonObject
+                            val name = obj.get("name")?.takeIf { !it.isJsonNull }?.asString?.trim()
+                                ?: obj.get("value")?.takeIf { !it.isJsonNull }?.asString?.trim()
+                            if (!name.isNullOrBlank()) return name
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "[HomeyAuthRepository:fetchHubSystemName] /manager/system/name failed: ${e.message}")
+        }
+
+        // Secondary fallback: GET /manager/system
+        try {
+            val req2 = Request.Builder()
+                .url("$baseUrl/manager/system")
+                .header("Authorization", "Bearer $sessionToken")
+                .get()
+                .build()
+
+            client.newCall(req2).execute().use { res ->
+                if (res.isSuccessful) {
+                    val raw = res.body?.string()?.trim()
+                    if (!raw.isNullOrBlank()) {
+                        val parsed = JsonParser.parseString(raw)
+                        if (parsed.isJsonObject) {
+                            val name = parsed.asJsonObject.get("name")?.takeIf { !it.isJsonNull }?.asString?.trim()
+                            if (!name.isNullOrBlank()) return name
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "[HomeyAuthRepository:fetchHubSystemName] /manager/system failed: ${e.message}")
+        }
+
+        return null
     }
 
     /**
@@ -345,19 +436,19 @@ class HomeyAuthRepository(
             val service = HomeyCompanionApiClient.create(homeyId = targetId, debug = BuildConfig.DEBUG)
             val loc = service.getLocation()
             storage.saveHomeLocation(loc.latitude, loc.longitude, targetId)
-            Log.d(TAG, "Refreshed home location for $targetId: (lat=***, lng=***)")
+            Log.d(TAG, "[HomeyAuthRepository:refreshHomeLocation] Refreshed home location for ${SanitizedHttpLogger.maskId(targetId)}: (lat=***, lng=***)")
 
             try {
                 val geofenceConfig = service.getGeofenceConfig()
                 storage.saveGeofenceDeviceIds(geofenceConfig.deviceIds, targetId)
-                Log.d(TAG, "Refreshed geofence barrier devices for $targetId: ${geofenceConfig.deviceIds}")
+                Log.d(TAG, "[HomeyAuthRepository:refreshHomeLocation] Refreshed geofence barrier devices for ${SanitizedHttpLogger.maskId(targetId)}: ${geofenceConfig.deviceIds}")
             } catch (cfgErr: Exception) {
-                Log.w(TAG, "Could not fetch geofence config: ${cfgErr.message}")
+                Log.w(TAG, "[HomeyAuthRepository:refreshHomeLocation] Could not fetch geofence config: ${cfgErr.message}")
             }
 
             Pair(loc.latitude, loc.longitude)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to refresh home location: ${e.message}", e)
+            Log.e(TAG, "[HomeyAuthRepository:refreshHomeLocation] Failed to refresh home location: ${e.message}", e)
             null
         }
     }

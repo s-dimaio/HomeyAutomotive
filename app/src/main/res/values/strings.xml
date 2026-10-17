@@ -149,6 +149,7 @@
     <string name="demo_device_living_light">Living Room Light</string>
     <string name="demo_device_kitchen_light">Kitchen Spotlight</string>
     <string name="demo_device_garden_light">Garden Light</string>
+    <string name="demo_device_main_gate">Driveway Gate</string>
     <string name="demo_device_front_door">Front Door</string>
     <string name="demo_device_main_garage">Main Garage</string>
     <string name="demo_zone_ground_floor">Ground Floor</string>
@@ -156,9 +157,10 @@
     <string name="demo_flow_leaving_home">Leaving Home</string>
     <string name="demo_flow_arriving_home">Arriving Home</string>
     <string name="demo_flow_goodnight">Goodnight &amp; Lock All</string>
-    <string name="demo_flow_welcome">Courtesy Access Open</string>
+    <string name="demo_flow_welcome">Welcome Home</string>
     <string name="demo_folder_automations">Automations</string>
     <string name="demo_folder_security">Security</string>
+    <string name="demo_notif_triggered_toast">Proximity alert notification sent</string>
     <string name="flows_general_folder">No Folder</string>
 
     <!-- HomeySelectionScreen -->
@@ -184,9 +186,11 @@
     <string name="geofence_channel_name">Home Proximity Alerts</string>
     <string name="geofence_channel_desc">Notifications when arriving or leaving home</string>
     <string name="geofence_notif_departure_title">You left home</string>
+    <string name="geofence_notif_departure_title_hub">Departure from %s</string>
     <string name="geofence_notif_departure_single">%s is still open</string>
     <string name="geofence_notif_departure_multi">%d barriers are still open</string>
     <string name="geofence_notif_arrival_title">Near home</string>
+    <string name="geofence_notif_arrival_title_hub">Near %s</string>
     <string name="geofence_notif_arrival_single">%s is closed</string>
     <string name="geofence_notif_arrival_multi">%d barriers are closed</string>
     <string name="geofence_action_close">Close %s</string>
@@ -212,23 +216,29 @@
     <string name="permission_btn_not_now">No thanks</string>
 
     <!-- Settings Geofence Section -->
-    <string name="settings_geofence_section">Geofence &amp; Smart Alerts</string>
-    <string name="settings_geofence_status_title">Geofence Alerts</string>
+    <string name="settings_geofence_section">Home Location &amp; Smart Alerts</string>
+    <string name="settings_geofence_status_title">Proximity Alerts</string>
     <string name="settings_geofence_status_active">Active (%1$.0fm radius)</string>
-    <string name="settings_geofence_status_foreground_only">Active (Foreground only)</string>
-    <string name="settings_geofence_status_disabled">Disabled</string>
-    <string name="settings_geofence_status_no_location">Home coordinates not set</string>
+    <string name="settings_geofence_status_foreground_only">Active (%1$.0fm radius - Foreground only)</string>
+    <string name="settings_geofence_status_disabled">Alerts disabled</string>
+    <string name="settings_geofence_status_no_location">Home Location not configured</string>
     <string name="settings_geofence_status_no_perm">Permissions required</string>
     <string name="settings_geofence_upgrade_bg_title">Enable Background Alerts</string>
     <string name="settings_geofence_upgrade_bg_desc">Allow location all the time to receive alerts when app is closed</string>
     <string name="settings_geofence_auto_close_title">Auto-Close on Departure</string>
     <string name="settings_geofence_auto_close_desc">Automatically close open barriers when leaving home</string>
-    <string name="settings_geofence_refresh_coords">Refresh Coordinates</string>
-    <string name="settings_geofence_refresh_coords_desc">Fetch updated location from Homey</string>
-    <string name="settings_geofence_coords_format">Lat: %1$.6f, Lng: %2$.6f</string>
-    <string name="settings_geofence_coords_success">Coordinates updated successfully</string>
-    <string name="settings_geofence_coords_error">Could not retrieve coordinates from Homey</string>
-    <string name="settings_geofence_coords_not_set">Not configured</string>
-    <string name="settings_demo_coords_unsupported">Updating home coordinates requires a physical Homey hub.</string>
+    <string name="settings_home_location_title">Home Location</string>
+    <string name="settings_home_location_active">Active (Lat: %1$.5f, Lng: %2$.5f)</string>
+    <string name="settings_home_location_disabled">Disabled (Tap to activate)</string>
+    <string name="settings_home_location_activated_toast">Home Location activated</string>
+    <string name="settings_home_location_deactivated_toast">Home Location deactivated</string>
+    <string name="settings_home_location_error_toast">Could not retrieve Home Location from Homey</string>
+    <string name="settings_home_location_configure_first_toast">Please activate Home Location first</string>
+    <string name="settings_demo_coords_unsupported">Home Location configuration requires a physical Homey hub.</string>
     <string name="settings_geofence_permissions_btn">Grant Permissions</string>
+
+    <!-- AAOS UX & Anti-Lockout (Phase 5) -->
+    <string name="startup_connected_toast">Connected to: %s</string>
+    <string name="main_error_tap_to_retry">Tap to retry</string>
+    <string name="main_driving_restriction_notice">Full list available when parked</string>
 </resources>

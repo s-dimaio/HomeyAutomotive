@@ -30,8 +30,8 @@ class MainTabIconManager(
     private val onInvalidateNeeded: () -> Unit
 ) {
     companion object {
-        /** Amber/Yellow status badge color (255, 160, 0) indicating an active device or overview alert. */
-        val BADGE_ALERT_YELLOW = Color.rgb(255, 160, 0)
+        /** Official Homey alarm blue badge color (#0082FA) indicating an active device or overview alert. */
+        val BADGE_ALERT_BLUE = Color.rgb(0, 130, 250)
     }
 
     private val TAG = "MainTabIconManager"
@@ -76,28 +76,27 @@ class MainTabIconManager(
      * 
      * @public
      * @param device The device to get the icon for.
-     * @param showBadge Whether to display the yellow status dot when active (true for Devices tab, false for Home tab).
+     * @param showBadge Whether to display the status badge (defaults to true).
      * @return The cached icon or a placeholder with the appropriate active badge.
      * @example
      * val icon = iconManager.getIcon(device, showBadge = true)
      */
     fun getIcon(device: HomeyDevice, showBadge: Boolean = true): CarIcon {
-        val effectiveActive = device.isActive && showBadge
-        val cacheKey = "${device.id}_$effectiveActive"
+        val badgeType = if (showBadge) _getBadgeType(device) else IconFetcher.BadgeType.NONE
+        val cacheKey = "${device.id}_${device.isActive}_$showBadge"
         val cached = iconCache[cacheKey]
         if (cached != null) return cached
 
         val rawDrawable = rawDrawableCache[device.id]
         if (rawDrawable != null) {
-            val badgeColor = if (effectiveActive) BADGE_ALERT_YELLOW else null
-            val styled = IconFetcher.getStyledIconFromDrawable(rawDrawable, badgeColor)
+            val styled = IconFetcher.getStyledIconFromDrawable(carContext, rawDrawable, badgeType)
             iconCache[cacheKey] = styled
             return styled
         }
 
         // Start async download if needed
         _fetchIconAsync(device)
-        return _getPlaceholder(device.isLight, effectiveActive)
+        return _getPlaceholder(device.isLight, device.isActive)
     }
 
     /**
@@ -120,7 +119,8 @@ class MainTabIconManager(
                 homeAlertIcon = IconFetcher.getStyledIconFromResource(
                     context = carContext,
                     resId = R.drawable.ic_overview_home,
-                    badgeColor = BADGE_ALERT_YELLOW
+                    badgeType = IconFetcher.BadgeType.DOT_ALERT,
+                    dotColor = BADGE_ALERT_BLUE
                 )
             }
             homeAlertIcon!!
@@ -129,7 +129,7 @@ class MainTabIconManager(
                 homeSecureIcon = IconFetcher.getStyledIconFromResource(
                     context = carContext,
                     resId = R.drawable.ic_overview_home,
-                    badgeColor = null
+                    badgeType = IconFetcher.BadgeType.NONE
                 )
             }
             homeSecureIcon!!
@@ -174,6 +174,25 @@ class MainTabIconManager(
     // ── Private Methods ───────────────────────────────────────────────────────
 
     /**
+     * Resolves the appropriate badge type for a given Homey device based on its category and state.
+     *
+     * Private method.
+     *
+     * @private
+     * @param device The device to evaluate.
+     * @return [IconFetcher.BadgeType] corresponding to the device category and state.
+     * @example val badgeType = _getBadgeType(device)
+     */
+    private fun _getBadgeType(device: HomeyDevice): IconFetcher.BadgeType {
+        return if (device.isLight) {
+            if (device.isActive) IconFetcher.BadgeType.LIGHT_ON else IconFetcher.BadgeType.LIGHT_OFF
+        } else {
+            // For doors/locks: isActive is true when open/unlocked, false when closed/locked
+            if (device.isActive) IconFetcher.BadgeType.LOCK_UNLOCKED else IconFetcher.BadgeType.LOCK_LOCKED
+        }
+    }
+
+    /**
      * Downloads a raw icon drawable for a device, caches it, and generates the current CarIcon.
      *
      * Private method.
@@ -193,9 +212,9 @@ class MainTabIconManager(
                 val rawDrawable = IconFetcher.fetchDrawable(carContext, url, storage)
                 if (rawDrawable != null) {
                     rawDrawableCache[device.id] = rawDrawable
-                    val badgeColor = if (device.isActive) BADGE_ALERT_YELLOW else null
-                    val styledIcon = IconFetcher.getStyledIconFromDrawable(rawDrawable, badgeColor)
-                    iconCache["${device.id}_${device.isActive}"] = styledIcon
+                    val badgeType = _getBadgeType(device)
+                    val styledIcon = IconFetcher.getStyledIconFromDrawable(carContext, rawDrawable, badgeType)
+                    iconCache["${device.id}_${device.isActive}_true"] = styledIcon
                     _scheduleDebounceInvalidate()
                 }
             } catch (e: Exception) {
@@ -224,7 +243,7 @@ class MainTabIconManager(
     }
 
     /**
-     * Returns a styled placeholder icon for lights or locks based on active state.
+     * Returns a styled placeholder icon for lights or locks based on active state with appropriate action badge.
      *
      * Private method.
      *
@@ -234,28 +253,45 @@ class MainTabIconManager(
      * @return Cached [CarIcon] placeholder.
      */
     private fun _getPlaceholder(isLight: Boolean, isActive: Boolean): CarIcon {
-        val badgeColor = if (isActive) BADGE_ALERT_YELLOW else null
         return if (isLight) {
             if (isActive) {
                 if (lightOnPlaceholder == null) {
-                    lightOnPlaceholder = IconFetcher.getStyledIconFromResource(carContext, R.drawable.ic_placeholder_light, badgeColor)
+                    lightOnPlaceholder = IconFetcher.getStyledIconFromResource(
+                        context = carContext,
+                        resId = R.drawable.ic_placeholder_light,
+                        badgeType = IconFetcher.BadgeType.LIGHT_ON
+                    )
                 }
                 lightOnPlaceholder!!
             } else {
                 if (lightOffPlaceholder == null) {
-                    lightOffPlaceholder = IconFetcher.getStyledIconFromResource(carContext, R.drawable.ic_placeholder_light, null)
+                    lightOffPlaceholder = IconFetcher.getStyledIconFromResource(
+                        context = carContext,
+                        resId = R.drawable.ic_placeholder_light,
+                        badgeType = IconFetcher.BadgeType.LIGHT_OFF
+                    )
                 }
                 lightOffPlaceholder!!
             }
         } else {
             if (isActive) {
+                // Open / Unlocked
                 if (lockOpenPlaceholder == null) {
-                    lockOpenPlaceholder = IconFetcher.getStyledIconFromResource(carContext, R.drawable.ic_placeholder_lock, badgeColor)
+                    lockOpenPlaceholder = IconFetcher.getStyledIconFromResource(
+                        context = carContext,
+                        resId = R.drawable.ic_placeholder_lock,
+                        badgeType = IconFetcher.BadgeType.LOCK_UNLOCKED
+                    )
                 }
                 lockOpenPlaceholder!!
             } else {
+                // Closed / Locked
                 if (lockClosedPlaceholder == null) {
-                    lockClosedPlaceholder = IconFetcher.getStyledIconFromResource(carContext, R.drawable.ic_placeholder_lock, null)
+                    lockClosedPlaceholder = IconFetcher.getStyledIconFromResource(
+                        context = carContext,
+                        resId = R.drawable.ic_placeholder_lock,
+                        badgeType = IconFetcher.BadgeType.LOCK_LOCKED
+                    )
                 }
                 lockClosedPlaceholder!!
             }

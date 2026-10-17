@@ -55,6 +55,26 @@ data class GeofenceConfigDto(
 )
 
 /**
+ * Request body for `POST /geofence/event`.
+ *
+ * @property transition The geofence transition type: `"enter"` or `"exit"`.
+ */
+data class GeofenceEventRequest(
+    @SerializedName("transition") val transition: String
+)
+
+/**
+ * Response body from `POST /geofence/event`.
+ *
+ * @property success Whether the flow card was successfully fired on Homey Pro.
+ * @property triggered The identifier of the triggered flow card (e.g. `"geofence_enter"`).
+ */
+data class GeofenceEventResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("triggered") val triggered: String? = null
+)
+
+/**
  * Thermometer classification configuration mapping device ID to mode:
  * "indoor", "outdoor", or "ignored".
  */
@@ -194,6 +214,17 @@ interface HomeyCompanionApiService {
      */
     @GET("geofence")
     suspend fun getGeofenceConfig(): GeofenceConfigDto
+
+    /**
+     * Reports a geofence transition event (arrival or departure) to the companion app,
+     * triggering in-car Flow Trigger Cards on Homey Pro.
+     *
+     * @public
+     * @param body [GeofenceEventRequest] specifying `"enter"` or `"exit"`.
+     * @return [GeofenceEventResponse] indicating trigger status.
+     */
+    @POST("geofence/event")
+    suspend fun postGeofenceEvent(@Body body: GeofenceEventRequest): GeofenceEventResponse
 
     /**
      * Retrieves the thermometer configuration mapping device IDs to classification modes.

@@ -88,9 +88,12 @@ object HomeyApiClient {
             .addInterceptor(TokenInjectorInterceptor(authRepo))
 
         if (debug) {
-            builder.addInterceptor(HttpLoggingInterceptor().apply {
+            val loggingInterceptor = HttpLoggingInterceptor(SanitizedHttpLogger("OkHttpClient")).apply {
                 level = HttpLoggingInterceptor.Level.BODY
-            })
+                redactHeader("Authorization")
+                redactHeader("x-homey-id")
+            }
+            builder.addInterceptor(loggingInterceptor)
         }
 
         return builder.build()
@@ -126,28 +129,35 @@ class TokenInjectorInterceptor(
      * @return The [Response] from the upstream server.
      */
     override fun intercept(chain: Interceptor.Chain): Response {
-        val bearer = runBlocking { authRepo.getValidDelegationToken() }
+        val originalRequest = chain.request()
+        val hubId = if (originalRequest.url.host.contains(".connect.athom.com")) {
+            originalRequest.url.host.substringBefore(".connect.athom.com")
+        } else {
+            null
+        }
 
-        val request = if (bearer != null) {
-            chain.request().newBuilder()
+        val bearer = runBlocking { authRepo.getValidDelegationToken(hubId) }
+
+        val request = if (bearer != null && originalRequest.header("Authorization") == null) {
+            originalRequest.newBuilder()
                 .header("Authorization", bearer)
                 .build()
         } else {
-            chain.request()
+            originalRequest
         }
 
         val response = chain.proceed(request)
 
         // If the Homey Hub returns 401 (token expired), attempt a silent refresh
         if (response.code == 401) {
-            val isRefreshed = runBlocking { authRepo.refreshHubSessionToken(bearer) }
+            val isRefreshed = runBlocking { authRepo.refreshHubSessionToken(bearer, hubId) }
             if (isRefreshed) {
-                val newBearer = runBlocking { authRepo.getValidDelegationToken() }
+                val newBearer = runBlocking { authRepo.getValidDelegationToken(hubId) }
                 if (newBearer != null) {
                     // Close the previous failed response body before retrying
                     response.close()
 
-                    val newRequest = chain.request().newBuilder()
+                    val newRequest = originalRequest.newBuilder()
                         .header("Authorization", newBearer)
                         .build()
                     return chain.proceed(newRequest)

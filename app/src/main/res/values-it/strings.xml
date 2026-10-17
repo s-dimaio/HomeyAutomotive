@@ -144,19 +144,21 @@
     <string name="settings_status_demo">Connesso a %s (Modalità Demo)</string>
     <string name="settings_exit_demo">Esci dalla Modalità Demo</string>
     <string name="settings_exit_demo_desc">Torna alla schermata di login Homey ID</string>
-    <string name="demo_device_living_light">Luce Salotto</string>
-    <string name="demo_device_kitchen_light">Faretto Cucina</string>
-    <string name="demo_device_garden_light">Luce Giardino</string>
-    <string name="demo_device_front_door">Portone Ingresso</string>
-    <string name="demo_device_main_garage">Garage Principale</string>
-    <string name="demo_zone_ground_floor">Piano Terra</string>
-    <string name="demo_zone_outside">Esterno</string>
-    <string name="demo_flow_leaving_home">Esco di casa</string>
-    <string name="demo_flow_arriving_home">Rientro a casa</string>
-    <string name="demo_flow_goodnight">Chiudi tutto &amp; Buonanotte</string>
-    <string name="demo_flow_welcome">Apertura varchi cortesia</string>
-    <string name="demo_folder_automations">Automazioni</string>
-    <string name="demo_folder_security">Sicurezza</string>
+    <string name="demo_device_living_light">Living Room Light</string>
+    <string name="demo_device_kitchen_light">Kitchen Spotlight</string>
+    <string name="demo_device_garden_light">Garden Light</string>
+    <string name="demo_device_main_gate">Driveway Gate</string>
+    <string name="demo_device_front_door">Front Door</string>
+    <string name="demo_device_main_garage">Main Garage</string>
+    <string name="demo_zone_ground_floor">Ground Floor</string>
+    <string name="demo_zone_outside">Outside</string>
+    <string name="demo_flow_leaving_home">Leaving Home</string>
+    <string name="demo_flow_arriving_home">Arriving Home</string>
+    <string name="demo_flow_goodnight">Goodnight &amp; Lock All</string>
+    <string name="demo_flow_welcome">Welcome Home</string>
+    <string name="demo_folder_automations">Automations</string>
+    <string name="demo_folder_security">Security</string>
+    <string name="demo_notif_triggered_toast">Notifica di arrivo inviata</string>
     <string name="flows_general_folder">No Folder</string>
 
     <!-- HomeySelectionScreen -->
@@ -182,9 +184,11 @@
     <string name="geofence_channel_name">Avvisi Prossimità Casa</string>
     <string name="geofence_channel_desc">Notifiche all\'avvicinamento o all\'allontanamento da casa</string>
     <string name="geofence_notif_departure_title">Sei uscito di casa</string>
+    <string name="geofence_notif_departure_title_hub">Partenza da %s</string>
     <string name="geofence_notif_departure_single">%s è ancora aperto</string>
     <string name="geofence_notif_departure_multi">%d varchi sono ancora aperti</string>
     <string name="geofence_notif_arrival_title">Sei vicino a casa</string>
+    <string name="geofence_notif_arrival_title_hub">In arrivo a %s</string>
     <string name="geofence_notif_arrival_single">%s è chiuso</string>
     <string name="geofence_notif_arrival_multi">%d varchi sono chiusi</string>
     <string name="geofence_action_close">Chiudi %s</string>
@@ -210,23 +214,29 @@
     <string name="permission_btn_not_now">Non accetto</string>
 
     <!-- Settings Geofence Section -->
-    <string name="settings_geofence_section">Geofence e Avvisi Intelligenti</string>
+    <string name="settings_geofence_section">Posizione Casa e Avvisi</string>
     <string name="settings_geofence_status_title">Avvisi di Prossimità</string>
     <string name="settings_geofence_status_active">Attivo (raggio %1$.0fm)</string>
-    <string name="settings_geofence_status_foreground_only">Attivo (Solo con app aperta)</string>
-    <string name="settings_geofence_status_disabled">Disattivato</string>
-    <string name="settings_geofence_status_no_location">Coordinate casa non configurate</string>
+    <string name="settings_geofence_status_foreground_only">Attivo (raggio %1$.0fm - Solo con app aperta)</string>
+    <string name="settings_geofence_status_disabled">Notifiche disattivate</string>
+    <string name="settings_geofence_status_no_location">Posizione Casa non configurata</string>
     <string name="settings_geofence_status_no_perm">Permessi necessari</string>
     <string name="settings_geofence_upgrade_bg_title">Abilita Avvisi in Background</string>
     <string name="settings_geofence_upgrade_bg_desc">Consenti la posizione sempre attiva per ricevere avvisi anche ad app chiusa</string>
     <string name="settings_geofence_auto_close_title">Chiusura Automatica in Partenza</string>
     <string name="settings_geofence_auto_close_desc">Chiude automaticamente i varchi aperti quando ti allontani da casa</string>
-    <string name="settings_geofence_refresh_coords">Aggiorna Coordinate</string>
-    <string name="settings_geofence_refresh_coords_desc">Recupera la posizione aggiornata da Homey</string>
-    <string name="settings_geofence_coords_format">Lat: %1$.6f, Lng: %2$.6f</string>
-    <string name="settings_geofence_coords_success">Coordinate aggiornate con successo</string>
-    <string name="settings_geofence_coords_error">Impossibile recuperare le coordinate da Homey</string>
-    <string name="settings_geofence_coords_not_set">Non configurate</string>
-    <string name="settings_demo_coords_unsupported">L\'aggiornamento delle coordinate richiede un Homey fisico.</string>
+    <string name="settings_home_location_title">Posizione Casa</string>
+    <string name="settings_home_location_active">Attiva (Lat: %1$.5f, Lng: %2$.5f)</string>
+    <string name="settings_home_location_disabled">Disattivata (Tocca per attivare)</string>
+    <string name="settings_home_location_activated_toast">Posizione Casa attivata</string>
+    <string name="settings_home_location_deactivated_toast">Posizione Casa disattivata</string>
+    <string name="settings_home_location_error_toast">Impossibile recuperare la Posizione Casa da Homey</string>
+    <string name="settings_home_location_configure_first_toast">Attiva prima la Posizione Casa</string>
+    <string name="settings_demo_coords_unsupported">La configurazione della Posizione Casa richiede un Homey fisico.</string>
     <string name="settings_geofence_permissions_btn">Concedi Permessi</string>
+
+    <!-- AAOS UX & Anti-Lockout (Phase 5) -->
+    <string name="startup_connected_toast">Connesso a: %s</string>
+    <string name="main_error_tap_to_retry">Tocca per riprovare</string>
+    <string name="main_driving_restriction_notice">Elenco completo a veicolo fermo</string>
 </resources>

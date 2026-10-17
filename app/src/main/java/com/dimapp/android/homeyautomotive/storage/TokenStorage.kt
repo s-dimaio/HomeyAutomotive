@@ -175,6 +175,8 @@ class TokenStorage(private val context: Context) {
         editor.remove("${KEY_HOME_LAT}_$homeyId")
         editor.remove("${KEY_HOME_LNG}_$homeyId")
         editor.remove("${KEY_GEOFENCE_BARRIER_IDS}_$homeyId")
+        editor.remove("${KEY_GEOFENCE_ENABLED}_$homeyId")
+        editor.remove("${KEY_GEOFENCE_RADIUS}_$homeyId")
         editor.remove("${KEY_HOME_SOURCE}_$homeyId")
         editor.remove("${KEY_HOME_DASHBOARD_ID}_$homeyId")
 
@@ -222,6 +224,36 @@ class TokenStorage(private val context: Context) {
         editor.apply()
     }
 
+    /**
+     * Updates the user-defined name of an existing hub in storage.
+     *
+     * Public method.
+     * Updates the entry in [KEY_HUB_TOKENS] and also updates [KEY_ACTIVE_HOMEY_NAME]
+     * if the updated hub is currently the selected/active one.
+     *
+     * @param homeyId The ID of the hub to update.
+     * @param newName The updated display name (e.g., "Veggia", "Modena").
+     * @return `true` if the hub was found and its name updated; `false` if the hub does not exist or input is invalid.
+     * @example
+     * ```kotlin
+     * val updated = storage.updateHubName("677c0a03023b9cf8cd156f27", "Veggia")
+     * ```
+     */
+    fun updateHubName(homeyId: String, newName: String): Boolean {
+        if (homeyId == "demo" || newName.isBlank()) return false
+        val tokensMap = getAllHubTokens().toMutableMap()
+        val entry = tokensMap[homeyId] ?: return false
+        if (entry.name == newName) return false
+
+        tokensMap[homeyId] = entry.copy(name = newName)
+        val editor = prefs.edit().putString(KEY_HUB_TOKENS, gson.toJson(tokensMap))
+        if (getSelectedHomeyId() == homeyId) {
+            editor.putString(KEY_ACTIVE_HOMEY_NAME, newName)
+        }
+        editor.apply()
+        return true
+    }
+
     // ── Public Methods — Active Homey Selection ───────────────────────────────
 
     /**
@@ -265,19 +297,51 @@ class TokenStorage(private val context: Context) {
     // ── Public Methods — Active Hub Session Tokens ─────────────────────────────
 
     /**
-     * Retrieves the session token for the currently active Homey hub.
+     * Retrieves the session token for the specified Homey hub, or the currently active hub if hubId is null.
      *
      * @public
+     * @param hubId Optional target hub ID. Defaults to active hub.
      * @return The raw session token string, or `null` if not authenticated.
      */
-    fun getHubSessionToken(): String? {
-        val activeId = getSelectedHomeyId() ?: return null
-        return getHubToken(activeId)?.sessionToken
+    fun getHubSessionToken(hubId: String? = null): String? {
+        val targetId = hubId ?: getSelectedHomeyId() ?: return null
+        return getHubToken(targetId)?.sessionToken
     }
 
-    fun getHubRefreshSecret(): String? {
-        val activeId = getSelectedHomeyId() ?: return null
-        return getHubToken(activeId)?.refreshSecret
+    /**
+     * Retrieves the refresh secret for the specified Homey hub, or the currently active hub if hubId is null.
+     *
+     * @public
+     * @param hubId Optional target hub ID. Defaults to active hub.
+     * @return The refresh secret string, or `null` if not available.
+     */
+    fun getHubRefreshSecret(hubId: String? = null): String? {
+        val targetId = hubId ?: getSelectedHomeyId() ?: return null
+        return getHubToken(targetId)?.refreshSecret
+    }
+
+    /**
+     * Overwrites the stored session token and refresh secret for the specified hub (or active hub).
+     * Used during silent token rotation (`/auth/refresh`).
+     *
+     * @public
+     * @param homeyId The target hub ID.
+     * @param newSessionToken The updated session token.
+     * @param newRefreshSecret The updated refresh secret.
+     */
+    fun updateHubTokens(homeyId: String, newSessionToken: String, newRefreshSecret: String) {
+        val entry = getHubToken(homeyId) ?: return
+        val name = entry.name ?: (if (homeyId == getSelectedHomeyId()) getSelectedHomeyName() else null) ?: return
+        val apiUrl = entry.apiUrl ?: (if (homeyId == getSelectedHomeyId()) getSelectedHomeyApiUrl() else null) ?: return
+        val isCurrentlyActive = (homeyId == getSelectedHomeyId())
+        saveHubToken(
+            homeyId = homeyId,
+            name = name,
+            sessionToken = newSessionToken,
+            refreshSecret = newRefreshSecret,
+            apiUrl = apiUrl,
+            saveAsActive = isCurrentlyActive
+        )
     }
 
     /**
@@ -286,17 +350,7 @@ class TokenStorage(private val context: Context) {
      */
     fun updateActiveHubTokens(newSessionToken: String, newRefreshSecret: String) {
         val activeId = getSelectedHomeyId() ?: return
-        val entry = getHubToken(activeId) ?: return
-        val name = entry.name ?: getSelectedHomeyName() ?: return
-        val apiUrl = entry.apiUrl ?: getSelectedHomeyApiUrl() ?: return
-        saveHubToken(
-            homeyId = activeId,
-            name = name,
-            sessionToken = newSessionToken,
-            refreshSecret = newRefreshSecret,
-            apiUrl = apiUrl,
-            saveAsActive = true
-        )
+        updateHubTokens(activeId, newSessionToken, newRefreshSecret)
     }
 
     // ── Public Methods — User and Homeys List (Persisted on first login) ──────
@@ -425,15 +479,46 @@ class TokenStorage(private val context: Context) {
     }
 
     /**
-     * Checks if geofencing alerts are globally enabled.
+     * Clears the saved Homey hub geographical coordinates, deactivating home location features.
+     *
+     * @public
+     * @param hubId Optional target hub ID. Defaults to active hub.
+     * @example storage.clearHomeLocation()
      */
-    fun isGeofenceEnabled(): Boolean = prefs.getBoolean(KEY_GEOFENCE_ENABLED, true)
+    fun clearHomeLocation(hubId: String? = null) {
+        val targetHub = hubId ?: getSelectedHomeyId() ?: return
+        prefs.edit()
+            .remove("${KEY_HOME_LAT}_$targetHub")
+            .remove("${KEY_HOME_LNG}_$targetHub")
+            .apply()
+    }
 
     /**
-     * Sets whether geofencing alerts are enabled.
+     * Checks if geofencing alerts are enabled for the specified hub (or active hub).
+     *
+     * @public
+     * @param hubId Optional target hub ID. Defaults to active hub.
+     * @return True if geofencing is enabled.
      */
-    fun setGeofenceEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_GEOFENCE_ENABLED, enabled).apply()
+    fun isGeofenceEnabled(hubId: String? = null): Boolean {
+        val target = hubId ?: getSelectedHomeyId() ?: return false
+        return prefs.getBoolean("${KEY_GEOFENCE_ENABLED}_$target", prefs.getBoolean(KEY_GEOFENCE_ENABLED, true))
+    }
+
+    /**
+     * Sets whether geofencing alerts are enabled for the specified hub (or active hub).
+     *
+     * @public
+     * @param enabled True to enable geofencing alerts.
+     * @param hubId Optional target hub ID. Defaults to active hub.
+     */
+    fun setGeofenceEnabled(enabled: Boolean, hubId: String? = null) {
+        val target = hubId ?: getSelectedHomeyId()
+        val editor = prefs.edit().putBoolean(KEY_GEOFENCE_ENABLED, enabled)
+        if (target != null) {
+            editor.putBoolean("${KEY_GEOFENCE_ENABLED}_$target", enabled)
+        }
+        editor.apply()
     }
 
     /**
@@ -450,15 +535,32 @@ class TokenStorage(private val context: Context) {
     }
 
     /**
-     * Retrieves the configured geofence radius in meters (default: 300m).
+     * Retrieves the configured geofence radius in meters for the specified hub (or active hub).
+     * Defaults to 300m if not configured.
+     *
+     * @public
+     * @param hubId Optional target hub ID. Defaults to active hub.
+     * @return Radius in meters.
      */
-    fun getGeofenceRadius(): Float = prefs.getFloat(KEY_GEOFENCE_RADIUS, 300f)
+    fun getGeofenceRadius(hubId: String? = null): Float {
+        val target = hubId ?: getSelectedHomeyId() ?: return 300f
+        return prefs.getFloat("${KEY_GEOFENCE_RADIUS}_$target", prefs.getFloat(KEY_GEOFENCE_RADIUS, 300f))
+    }
 
     /**
-     * Sets the geofence radius in meters.
+     * Sets the geofence radius in meters for the specified hub (or active hub).
+     *
+     * @public
+     * @param radius Radius in meters (e.g. 100f, 200f, 300f).
+     * @param hubId Optional target hub ID. Defaults to active hub.
      */
-    fun setGeofenceRadius(radius: Float) {
-        prefs.edit().putFloat(KEY_GEOFENCE_RADIUS, radius).apply()
+    fun setGeofenceRadius(radius: Float, hubId: String? = null) {
+        val target = hubId ?: getSelectedHomeyId()
+        val editor = prefs.edit().putFloat(KEY_GEOFENCE_RADIUS, radius)
+        if (target != null) {
+            editor.putFloat("${KEY_GEOFENCE_RADIUS}_$target", radius)
+        }
+        editor.apply()
     }
 
     /**
@@ -533,7 +635,7 @@ class TokenStorage(private val context: Context) {
             apiUrl = "https://demo.connect.athom.com",
             saveAsActive = true
         )
-        saveGeofenceDeviceIds(listOf("demo_front_door", "demo_main_garage"), "demo")
+        saveGeofenceDeviceIds(listOf("demo_gate_1", "demo_garage_1", "demo_door_1"), "demo")
     }
 
     /**

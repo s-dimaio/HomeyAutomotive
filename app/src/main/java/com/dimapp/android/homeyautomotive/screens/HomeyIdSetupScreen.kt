@@ -11,6 +11,7 @@ import androidx.car.app.model.signin.InputSignInMethod
 import androidx.car.app.model.signin.SignInTemplate
 import com.dimapp.android.homeyautomotive.R
 import com.dimapp.android.homeyautomotive.core.DependencyManager
+import com.dimapp.android.homeyautomotive.geofence.GeofenceReceiver
 
 private const val TAG = "HomeyIdSetupScreen"
 
@@ -130,6 +131,7 @@ class HomeyIdSetupScreen(
             Log.d(TAG, "Demo ID confirmed — activating demo mode and redirecting to MainTabScreen.")
             val storage = DependencyManager.getTokenStorage(carContext)
             storage.enableDemoMode()
+            GeofenceReceiver.postDemoArrivalNotification(carContext)
             screenManager.popToRoot()
             screenManager.push(MainTabScreen(carContext))
             return

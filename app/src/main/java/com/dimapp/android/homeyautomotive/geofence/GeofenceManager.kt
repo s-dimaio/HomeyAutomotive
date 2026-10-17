@@ -158,11 +158,6 @@ object GeofenceManager {
      */
     fun reregisterFromStorage(context: Context) {
         val storage = DependencyManager.getTokenStorage(context)
-        if (!storage.isGeofenceEnabled()) {
-            Log.d(TAG, "[GeofenceManager:reregisterFromStorage] Geofencing disabled in preferences. Removing any active geofence.")
-            removeGeofence(context)
-            return
-        }
 
         val coords = storage.getHomeLocation()
         if (coords == null) {
@@ -171,6 +166,15 @@ object GeofenceManager {
             return
         }
 
+        if (!hasFineLocationPermission(context)) {
+            Log.d(TAG, "[GeofenceManager:reregisterFromStorage] Location permissions missing. Removing any active geofence.")
+            removeGeofence(context)
+            return
+        }
+
+        // Even if in-car proximity alerts are disabled by the user (!isGeofenceEnabled),
+        // we keep the geofence registered so that Homey Pro Flow trigger cards
+        // ("geofence_enter" / "geofence_exit") continue to trigger seamlessly.
         val radius = storage.getGeofenceRadius()
         registerGeofence(context, coords.first, coords.second, radius)
     }

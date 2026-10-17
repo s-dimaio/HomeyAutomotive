@@ -549,6 +549,57 @@ class DeviceRepository(
     private fun _createDemoDevices(): List<HomeyDevice> {
         return listOf(
             HomeyDevice(
+                id = "demo_gate_1",
+                name = context.getString(R.string.demo_device_main_gate),
+                zoneName = context.getString(R.string.demo_zone_outside),
+                isActive = false, // false for garagedoor = closed
+                isAvailable = true,
+                primaryCapability = CAP_GARAGEDOOR,
+                deviceClass = "garagedoor",
+                iconUrl = null,
+                isFavorite = true,
+                isLight = false,
+                isHidden = false,
+                isGroupMember = false,
+                zoneOrder = 2,
+                zoneId = "demo_zone_outside",
+                isZoneActive = false
+            ),
+            HomeyDevice(
+                id = "demo_garage_1",
+                name = context.getString(R.string.demo_device_main_garage),
+                zoneName = context.getString(R.string.demo_zone_outside),
+                isActive = false, // false for garagedoor = closed
+                isAvailable = true,
+                primaryCapability = CAP_GARAGEDOOR,
+                deviceClass = "garagedoor",
+                iconUrl = null,
+                isFavorite = true,
+                isLight = false,
+                isHidden = false,
+                isGroupMember = false,
+                zoneOrder = 2,
+                zoneId = "demo_zone_outside",
+                isZoneActive = false
+            ),
+            HomeyDevice(
+                id = "demo_door_1",
+                name = context.getString(R.string.demo_device_front_door),
+                zoneName = context.getString(R.string.demo_zone_ground_floor),
+                isActive = false, // false for lock = locked / closed
+                isAvailable = true,
+                primaryCapability = "locked",
+                deviceClass = "lock",
+                iconUrl = null,
+                isFavorite = true,
+                isLight = false,
+                isHidden = false,
+                isGroupMember = false,
+                zoneOrder = 1,
+                zoneId = "demo_zone_ground_floor",
+                isZoneActive = true
+            ),
+            HomeyDevice(
                 id = "demo_light_1",
                 name = context.getString(R.string.demo_device_living_light),
                 zoneName = context.getString(R.string.demo_zone_ground_floor),
@@ -593,40 +644,6 @@ class DeviceRepository(
                 iconUrl = null,
                 isFavorite = false,
                 isLight = true,
-                isHidden = false,
-                isGroupMember = false,
-                zoneOrder = 2,
-                zoneId = "demo_zone_outside",
-                isZoneActive = false
-            ),
-            HomeyDevice(
-                id = "demo_door_1",
-                name = context.getString(R.string.demo_device_front_door),
-                zoneName = context.getString(R.string.demo_zone_ground_floor),
-                isActive = false, // false for lock = locked / closed
-                isAvailable = true,
-                primaryCapability = "locked",
-                deviceClass = "lock",
-                iconUrl = null,
-                isFavorite = true,
-                isLight = false,
-                isHidden = false,
-                isGroupMember = false,
-                zoneOrder = 1,
-                zoneId = "demo_zone_ground_floor",
-                isZoneActive = true
-            ),
-            HomeyDevice(
-                id = "demo_garage_1",
-                name = context.getString(R.string.demo_device_main_garage),
-                zoneName = context.getString(R.string.demo_zone_outside),
-                isActive = false, // false for garagedoor = closed
-                isAvailable = true,
-                primaryCapability = CAP_GARAGEDOOR,
-                deviceClass = "garagedoor",
-                iconUrl = null,
-                isFavorite = true,
-                isLight = false,
                 isHidden = false,
                 isGroupMember = false,
                 zoneOrder = 2,

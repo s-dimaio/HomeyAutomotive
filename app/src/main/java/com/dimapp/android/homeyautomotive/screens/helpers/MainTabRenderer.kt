@@ -1,6 +1,7 @@
 package com.dimapp.android.homeyautomotive.screens.helpers
 
 import androidx.car.app.CarContext
+import androidx.car.app.constraints.ConstraintManager
 import androidx.car.app.model.Action
 import androidx.car.app.model.CarColor
 import androidx.car.app.model.CarIcon
@@ -8,7 +9,6 @@ import androidx.car.app.model.GridItem
 import androidx.car.app.model.GridTemplate
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
-import androidx.car.app.model.MessageTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.SectionedItemList
 import androidx.car.app.model.Template
@@ -36,11 +36,11 @@ class MainTabRenderer(
 ) {
 
     /**
-     * Builds a simple loading template (spinner).
+     * Builds a list loading template (spinner) for list-based tabs.
      *
      * Public method.
      *
-     * @return [Template] with loading spinner.
+     * @return [Template] with list loading spinner.
      * @example
      * val template = renderer.buildLoadingTemplate()
      */
@@ -51,24 +51,73 @@ class MainTabRenderer(
     }
 
     /**
-     * Builds an error message template with a retry button.
+     * Builds a grid loading template (spinner) for the Home tab.
+     * Keeps template class consistent (GridTemplate -> GridTemplate) to avoid IPC flicker.
+     *
+     * Public method.
+     *
+     * @return [Template] with grid loading spinner.
+     * @example
+     * val template = renderer.buildHomeGridLoadingTemplate()
+     */
+    fun buildHomeGridLoadingTemplate(): Template {
+        return GridTemplate.Builder()
+            .setLoading(true)
+            .build()
+    }
+
+    /**
+     * Builds an in-place error grid template with an actionable retry tile for the Home tab.
+     * Does not change template class (GridTemplate), preventing driver distraction lockouts in motion.
      *
      * Public method.
      *
      * @param message The error message to display.
-     * @return [Template] containing the error notice and retry action.
+     * @return [Template] with error tile and retry action.
      * @example
-     * val template = renderer.buildErrorTemplate("Timeout")
+     * val template = renderer.buildHomeGridErrorTemplate("Network error")
      */
-    fun buildErrorTemplate(message: String): Template {
-        return MessageTemplate.Builder(carContext.getString(R.string.main_error_load_devices, message))
-            .addAction(
-                Action.Builder()
-                    .setTitle(carContext.getString(R.string.main_retry_button))
-                    .setBackgroundColor(CarColor.BLUE)
-                    .setOnClickListener { onRetryRequested() }
-                    .build()
-            )
+    fun buildHomeGridErrorTemplate(message: String): Template {
+        val itemBuilder = ItemList.Builder()
+        itemBuilder.addItem(
+            GridItem.Builder()
+                .setTitle(carContext.getString(R.string.main_error_load_devices, message))
+                .setText(carContext.getString(R.string.main_error_tap_to_retry))
+                .setImage(
+                    CarIcon.Builder(
+                        IconCompat.createWithResource(carContext, R.drawable.ic_settings)
+                    ).build()
+                )
+                .setOnClickListener { onRetryRequested() }
+                .build()
+        )
+        return GridTemplate.Builder()
+            .setSingleList(itemBuilder.build())
+            .build()
+    }
+
+    /**
+     * Builds an in-place error list template with an actionable retry row for list-based tabs.
+     * Does not change template class (ListTemplate), preventing driver distraction lockouts in motion.
+     *
+     * Public method.
+     *
+     * @param message The error message to display.
+     * @return [Template] containing the error notice and retry row.
+     * @example
+     * val template = renderer.buildListErrorTemplate("Timeout")
+     */
+    fun buildListErrorTemplate(message: String): Template {
+        val listBuilder = ItemList.Builder()
+        listBuilder.addItem(
+            Row.Builder()
+                .setTitle(carContext.getString(R.string.main_error_load_devices, message))
+                .addText(carContext.getString(R.string.main_error_tap_to_retry))
+                .setOnClickListener { onRetryRequested() }
+                .build()
+        )
+        return ListTemplate.Builder()
+            .setSingleList(listBuilder.build())
             .build()
     }
 
@@ -86,12 +135,20 @@ class MainTabRenderer(
     fun buildHomeGrid(devices: List<HomeyDevice>, isDashboard: Boolean): Template {
         val itemBuilder = ItemList.Builder()
 
-        if (devices.isEmpty()) {
+        val maxGridItems = try {
+            carContext.getCarService(ConstraintManager::class.java).getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_GRID)
+        } catch (e: Exception) {
+            Int.MAX_VALUE
+        }
+
+        val displayDevices = if (devices.size > maxGridItems) devices.take(maxGridItems) else devices
+
+        if (displayDevices.isEmpty()) {
             val msg = if (isDashboard) carContext.getString(R.string.main_no_dashboard_devices)
                       else carContext.getString(R.string.main_no_favorites)
             itemBuilder.setNoItemsMessage(msg)
         } else {
-            devices.forEach { device ->
+            displayDevices.forEach { device ->
                 itemBuilder.addItem(_buildDeviceGridItem(device))
             }
         }
@@ -135,9 +192,16 @@ class MainTabRenderer(
             return templateBuilder.build()
         }
 
+        val maxListItems = try {
+            carContext.getCarService(ConstraintManager::class.java).getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_LIST)
+        } catch (e: Exception) {
+            Int.MAX_VALUE
+        }
+
         // 1. Home Overview Section (Task 3.2)
         val overviewSection = _buildHomeOverviewSection(visibleDevices, avgIndoorTemperature, avgOutdoorTemperature)
         templateBuilder.addSectionedList(overviewSection)
+        var totalItemsAdded = 1
 
         // 2. Zone Sections grouped by room (Task 3.5 & 3.7)
         val groupedDevices = visibleDevices.groupBy { it.zoneName }
@@ -145,10 +209,25 @@ class MainTabRenderer(
             entry.value.firstOrNull()?.zoneOrder ?: Int.MAX_VALUE
         }
 
-        sortedGroups.forEach { (zoneName, zoneDevices) ->
+        for ((zoneName, zoneDevices) in sortedGroups) {
+            if (totalItemsAdded >= maxListItems) break
+
             val itemListBuilder = ItemList.Builder()
-            zoneDevices.forEach { device ->
+            var hitLimit = false
+
+            for (device in zoneDevices) {
+                if (totalItemsAdded >= maxListItems - 1 && visibleDevices.size > totalItemsAdded) {
+                    itemListBuilder.addItem(
+                        Row.Builder()
+                            .setTitle(carContext.getString(R.string.main_driving_restriction_notice))
+                            .build()
+                    )
+                    totalItemsAdded++
+                    hitLimit = true
+                    break
+                }
                 itemListBuilder.addItem(_buildDeviceRow(device))
+                totalItemsAdded++
             }
 
             val headerTitle = _buildZoneHeaderTitle(
@@ -163,6 +242,8 @@ class MainTabRenderer(
                     headerTitle
                 )
             )
+
+            if (hitLimit) break
         }
 
         return templateBuilder.build()
@@ -215,16 +296,35 @@ class MainTabRenderer(
             return templateBuilder.build()
         }
 
+        val maxListItems = try {
+            carContext.getCarService(ConstraintManager::class.java).getContentLimit(ConstraintManager.CONTENT_LIMIT_TYPE_LIST)
+        } catch (e: Exception) {
+            Int.MAX_VALUE
+        }
+
+        var totalItemsAdded = 0
         val noFolderTitle = carContext.getString(R.string.flows_general_folder)
 
         // 1. Partition flows into: flows without a folder (rendered at the top) and flows with a folder
         val (flowsWithoutFolder, flowsWithFolder) = flows.partition { it.folderName == null }
 
         // 2. If there are flows without a folder, add them in the first section at the very top
-        if (flowsWithoutFolder.isNotEmpty()) {
+        if (flowsWithoutFolder.isNotEmpty() && totalItemsAdded < maxListItems) {
             val itemListBuilder = ItemList.Builder()
             val sortedWithoutFolder = flowsWithoutFolder.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-            sortedWithoutFolder.forEach { flow ->
+            var hitLimit = false
+
+            for (flow in sortedWithoutFolder) {
+                if (totalItemsAdded >= maxListItems - 1 && flows.size > totalItemsAdded) {
+                    itemListBuilder.addItem(
+                        Row.Builder()
+                            .setTitle(carContext.getString(R.string.main_driving_restriction_notice))
+                            .build()
+                    )
+                    totalItemsAdded++
+                    hitLimit = true
+                    break
+                }
                 itemListBuilder.addItem(
                     _buildFlowRow(
                         flow = flow,
@@ -232,6 +332,7 @@ class MainTabRenderer(
                         onTriggerRequested = onTriggerRequested
                     )
                 )
+                totalItemsAdded++
             }
 
             val safeTitle = "\u2002" + noFolderTitle.uppercase()
@@ -241,16 +342,32 @@ class MainTabRenderer(
                     safeTitle
                 )
             )
+
+            if (hitLimit) return templateBuilder.build()
         }
 
         // 3. Group remaining flows by folder and sort folders alphabetically (case-insensitive)
         val groupedFlows = flowsWithFolder.groupBy { it.folderName ?: noFolderTitle }
         val sortedGroups = groupedFlows.entries.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.key })
 
-        sortedGroups.forEach { (folderName, folderFlows) ->
+        for ((folderName, folderFlows) in sortedGroups) {
+            if (totalItemsAdded >= maxListItems) break
+
             val itemListBuilder = ItemList.Builder()
             val sortedFlows = folderFlows.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-            sortedFlows.forEach { flow ->
+            var hitLimit = false
+
+            for (flow in sortedFlows) {
+                if (totalItemsAdded >= maxListItems - 1 && flows.size > totalItemsAdded) {
+                    itemListBuilder.addItem(
+                        Row.Builder()
+                            .setTitle(carContext.getString(R.string.main_driving_restriction_notice))
+                            .build()
+                    )
+                    totalItemsAdded++
+                    hitLimit = true
+                    break
+                }
                 itemListBuilder.addItem(
                     _buildFlowRow(
                         flow = flow,
@@ -258,6 +375,7 @@ class MainTabRenderer(
                         onTriggerRequested = onTriggerRequested
                     )
                 )
+                totalItemsAdded++
             }
 
             val safeFolderTitle = "\u2002" + folderName.uppercase()
@@ -267,6 +385,8 @@ class MainTabRenderer(
                     safeFolderTitle
                 )
             )
+
+            if (hitLimit) break
         }
 
         return templateBuilder.build()
@@ -420,7 +540,7 @@ class MainTabRenderer(
         return GridItem.Builder()
             .setTitle(device.name)
             .setText(_getStateLabel(device))
-            .setImage(iconManager.getIcon(device, showBadge = false))
+            .setImage(iconManager.getIcon(device, showBadge = true))
             .setOnClickListener { onToggleRequested(device) }
             .build()
     }
@@ -461,11 +581,17 @@ class MainTabRenderer(
         isTriggering: Boolean,
         onTriggerRequested: (FlowDto) -> Unit
     ): Row {
+        val iconRes = if (flow.isAdvanced) {
+            R.drawable.ic_flow_advanced
+        } else {
+            R.drawable.ic_flow_standard
+        }
+
         val rowBuilder = Row.Builder()
             .setTitle(flow.name)
             .setImage(
                 CarIcon.Builder(
-                    IconCompat.createWithResource(carContext, R.drawable.ic_play_flow)
+                    IconCompat.createWithResource(carContext, iconRes)
                 ).build(),
                 Row.IMAGE_TYPE_ICON
             )

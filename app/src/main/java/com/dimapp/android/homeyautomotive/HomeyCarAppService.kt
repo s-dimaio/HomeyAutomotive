@@ -1,11 +1,16 @@
 package com.dimapp.android.homeyautomotive
 
 import android.content.Intent
+import android.util.Log
 import androidx.car.app.CarAppService
 import androidx.car.app.Screen
 import androidx.car.app.Session
 import androidx.car.app.validation.HostValidator
+import com.dimapp.android.homeyautomotive.core.DependencyManager
+import com.dimapp.android.homeyautomotive.geofence.GeofenceReceiver
+import com.dimapp.android.homeyautomotive.screens.HomeyIdSetupScreen
 import com.dimapp.android.homeyautomotive.screens.HomeySelectionScreen
+import com.dimapp.android.homeyautomotive.screens.MainTabScreen
 
 /**
  * Entry point for the Homey Automotive Car App.
@@ -18,15 +23,28 @@ import com.dimapp.android.homeyautomotive.screens.HomeySelectionScreen
 class HomeyCarAppService : CarAppService() {
 
     /**
-     * Returns the host validator.
+     * Returns the host validator configured for the Car App Library.
      *
-     * Using [HostValidator.ALLOW_ALL_HOSTS_VALIDATOR] for development convenience.
-     * For production, this should be replaced with a signed-host validator.
+     * Employs a dual-mode validation strategy:
+     * - In debug builds ([BuildConfig.DEBUG] is true), permits all hosts via [HostValidator.ALLOW_ALL_HOSTS_VALIDATOR]
+     *   to facilitate development with DHU (Desktop Head Unit) and custom local test environments.
+     * - In release builds ([BuildConfig.DEBUG] is false), restricts host connections strictly to validated
+     *   Google Automotive Services (GAS) and approved OEM hosts using [androidx.car.app.R.array.hosts_allowlist_sample].
      *
-     * @return [HostValidator] instance.
+     * Public method overriding [CarAppService.createHostValidator].
+     *
+     * @return A configured [HostValidator] instance appropriate for the current build variant.
      */
     override fun createHostValidator(): HostValidator {
-        return HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
+        return if (BuildConfig.DEBUG) {
+            Log.d("HomeyCarAppService", "[HomeyCarAppService:createHostValidator] Allowing all hosts (DEBUG mode)")
+            HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
+        } else {
+            Log.i("HomeyCarAppService", "[HomeyCarAppService:createHostValidator] Enforcing strict HostValidator with allowed hosts allowlist (RELEASE mode)")
+            HostValidator.Builder(applicationContext)
+                .addAllowedHosts(androidx.car.app.R.array.hosts_allowlist_sample)
+                .build()
+        }
     }
 
     /**
@@ -42,25 +60,43 @@ class HomeyCarAppService : CarAppService() {
 /**
  * Manages the lifecycle of the Homey Automotive Car App session.
  *
- * Routing logic based on OAuth2 authentication state:
- * - Not authenticated → [OAuthSignInScreen]
- * - Authenticated, no Homey selected → [HomeySelectionScreen]
- * - Authenticated, Homey selected → [MainTabScreen]
+ * Direct routing logic avoiding intermediate "ghost" screens:
+ * - Active hub configured or Demo mode -> [MainTabScreen] directly as root.
+ * - Hubs configured but none selected -> [HomeySelectionScreen]
+ * - First run / no hubs configured -> [HomeyIdSetupScreen] directly as root.
  */
 class HomeySession : Session() {
 
     /**
      * Called when the session is first created. Returns the initial screen.
      *
-     * Reads the authentication state from [HomeyAuthRepository] and routes accordingly:
-     * - If the user is not authenticated, shows [OAuthSignInScreen].
-     * - If authenticated but no Homey hub is selected yet, shows [HomeySelectionScreen].
-     * - If fully configured, shows [MainTabScreen] directly.
+     * Reads the authentication state directly from [TokenStorage] and routes directly:
+     * - If demo mode is active or an authenticated hub is already selected, returns [MainTabScreen] directly as root.
+     * - If hubs exist in storage but none is active, returns [HomeySelectionScreen].
+     * - If no hubs are configured at all, returns [HomeyIdSetupScreen] directly as root.
+     *
+     * This avoids pushing an unnecessary intermediate screen, preserving the 5-step AAOS quota.
      *
      * @param intent The intent that started the session.
      * @return The initial [Screen] to display.
      */
     override fun onCreateScreen(intent: Intent): Screen {
-        return HomeySelectionScreen(carContext)
+        Log.i("HomeySession", "[HomeySession:onCreateScreen] Host validated successfully. Routing to initial screen.")
+        val storage = DependencyManager.getTokenStorage(carContext)
+        val selectedHubId = storage.getSelectedHomeyId()
+        val allHubs = storage.getAllHubTokens()
+
+        if (storage.isDemoMode()) {
+            GeofenceReceiver.postDemoArrivalNotification(carContext)
+            return MainTabScreen(carContext)
+        }
+
+        return if (!selectedHubId.isNullOrBlank() && allHubs.containsKey(selectedHubId)) {
+            MainTabScreen(carContext)
+        } else if (allHubs.isNotEmpty()) {
+            HomeySelectionScreen(carContext, showBackButton = false)
+        } else {
+            HomeyIdSetupScreen(carContext, isAddingHub = false)
+        }
     }
 }

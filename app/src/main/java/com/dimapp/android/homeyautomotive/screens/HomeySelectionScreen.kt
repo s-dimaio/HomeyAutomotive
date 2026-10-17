@@ -20,6 +20,12 @@ import com.dimapp.android.homeyautomotive.R
 import com.dimapp.android.homeyautomotive.api.HomeyPayload
 import com.dimapp.android.homeyautomotive.core.DependencyManager
 import com.dimapp.android.homeyautomotive.storage.TokenStorage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val TAG = "HomeySelectionScreen"
 
@@ -50,6 +56,8 @@ class HomeySelectionScreen(
 ) : Screen(carContext) {
 
     private val storage = DependencyManager.getTokenStorage(carContext)
+    private val authRepo = DependencyManager.getAuthRepository(carContext)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     /** List of all authenticated Homey hubs added manually by the user. */
     private var homeys: List<HomeyPayload> = emptyList()
@@ -69,6 +77,11 @@ class HomeySelectionScreen(
                 // the flag has been cleared.
                 isRedirecting = false
                 _loadHomeys()
+                _syncHubNames()
+            }
+
+            override fun onDestroy(owner: LifecycleOwner) {
+                scope.cancel()
             }
         })
     }
@@ -203,6 +216,41 @@ class HomeySelectionScreen(
             }, 500)
         } else {
             invalidate()
+        }
+    }
+
+    /**
+     * Synchronizes the user-defined hub display names (e.g., "Veggia", "Modena") in the background.
+     *
+     * Private method.
+     * Queries /manager/system/name or /manager/system for each authenticated hub
+     * and updates [TokenStorage] if the retrieved name differs from the current entry.
+     * If any name is updated, refreshes the local hub list and invalidates the template.
+     */
+    private fun _syncHubNames() {
+        val authHubs = storage.getAllHubTokens()
+        scope.launch(Dispatchers.IO) {
+            var anyUpdated = false
+            for ((id, entry) in authHubs) {
+                if (id == "demo") continue
+                val token = entry.sessionToken ?: continue
+                val apiUrl = entry.apiUrl ?: continue
+                try {
+                    val realName = authRepo.fetchHubSystemName(apiUrl, token)
+                    if (!realName.isNullOrBlank() && realName != entry.name) {
+                        Log.i(TAG, "[HomeySelectionScreen:_syncHubNames] Hub $id name updated: '${entry.name}' -> '$realName'")
+                        val updated = storage.updateHubName(id, realName)
+                        if (updated) anyUpdated = true
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "[HomeySelectionScreen:_syncHubNames] Failed to fetch name for hub $id: ${e.message}")
+                }
+            }
+            if (anyUpdated) {
+                withContext(Dispatchers.Main) {
+                    _loadHomeys()
+                }
+            }
         }
     }
 

@@ -52,6 +52,13 @@ object HomeyCompanionApiClient {
      */
     private val serviceCache = mutableMapOf<String, HomeyCompanionApiService>()
 
+    /**
+     * Optional provider lambda returning the active session token for a given hubId.
+     * When present, requests will have `Authorization: Bearer <token>` attached
+     * unless an Authorization header is already set.
+     */
+    var tokenProvider: ((hubId: String?) -> String?)? = null
+
     // ── Public Methods ─────────────────────────────────────────────────────────
 
     /**
@@ -107,12 +114,10 @@ object HomeyCompanionApiClient {
     }
 
     /**
-     * Builds a minimal [OkHttpClient] with timeouts and optional logging.
-     *
-     * No auth interceptor is added since the companion app endpoints are public.
+     * Builds a minimal [OkHttpClient] with timeouts, token injection, and sanitized logging.
      *
      * @private
-     * @param debug If `true`, adds a BASIC-level [HttpLoggingInterceptor].
+     * @param debug If `true`, adds a BASIC-level [HttpLoggingInterceptor] with redacted headers.
      * @return Configured [OkHttpClient].
      */
     private fun _buildOkHttpClient(debug: Boolean): OkHttpClient {
@@ -120,11 +125,31 @@ object HomeyCompanionApiClient {
             .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .addInterceptor { chain ->
+                val request = chain.request()
+                val path = request.url.encodedPath
+                val isAuthEndpoint = path.contains("/auth/")
+                val requestBuilder = request.newBuilder()
+                val host = request.url.host
+                val hubId = if (host.contains(".connect.athom.com")) {
+                    host.substringBefore(".connect.athom.com")
+                } else {
+                    null
+                }
+                val token = tokenProvider?.invoke(hubId)
+                if (!isAuthEndpoint && !token.isNullOrBlank() && request.header("Authorization") == null) {
+                    requestBuilder.header("Authorization", "Bearer $token")
+                }
+                chain.proceed(requestBuilder.build())
+            }
 
         if (debug) {
-            builder.addInterceptor(HttpLoggingInterceptor().apply {
+            val loggingInterceptor = HttpLoggingInterceptor(SanitizedHttpLogger("OkHttpClient.Companion")).apply {
                 level = HttpLoggingInterceptor.Level.BASIC
-            })
+                redactHeader("Authorization")
+                redactHeader("x-homey-id")
+            }
+            builder.addInterceptor(loggingInterceptor)
         }
 
         return builder.build()

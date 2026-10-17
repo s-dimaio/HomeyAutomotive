@@ -5,6 +5,8 @@ import android.util.Log
 import com.dimapp.android.homeyautomotive.BuildConfig
 import com.dimapp.android.homeyautomotive.api.HomeyApiClient
 import com.dimapp.android.homeyautomotive.api.HomeyApiService
+import com.dimapp.android.homeyautomotive.api.HomeyCompanionApiClient
+import com.dimapp.android.homeyautomotive.api.SanitizedHttpLogger
 import com.dimapp.android.homeyautomotive.auth.HomeyAuthRepository
 import com.dimapp.android.homeyautomotive.repository.DashboardRepository
 import com.dimapp.android.homeyautomotive.repository.DeviceRepository
@@ -42,6 +44,9 @@ object DependencyManager {
     fun getTokenStorage(context: Context): TokenStorage {
         if (_storage == null) {
             _storage = TokenStorage(context.applicationContext)
+            HomeyCompanionApiClient.tokenProvider = { hubId ->
+                _storage?.getHubSessionToken(hubId)
+            }
         }
         return _storage!!
     }
@@ -91,7 +96,7 @@ object DependencyManager {
         val baseUrl = storage.getBaseUrl() ?: return null
 
         if (_apiService == null || baseUrl != _lastBaseUrl) {
-            Log.d(TAG, "Building HomeyApiService for URL: $baseUrl")
+            Log.d(TAG, "Building HomeyApiService for URL: ${SanitizedHttpLogger.sanitize(baseUrl)}")
             val client = getOkHttpClient(context)
             _apiService = HomeyApiClient.createWithClient(baseUrl, client)
             _lastBaseUrl = baseUrl

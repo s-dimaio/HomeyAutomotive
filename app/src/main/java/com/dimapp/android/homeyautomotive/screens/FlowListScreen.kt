@@ -164,7 +164,8 @@ class FlowListScreen(carContext: CarContext) : Screen(carContext) {
         val rowIcon = if (flow.folder != null) {
             CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_folder)).build()
         } else {
-            CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_play_flow)).build()
+            val flowIconRes = if (flow.isAdvanced) R.drawable.ic_flow_advanced else R.drawable.ic_flow_standard
+            CarIcon.Builder(IconCompat.createWithResource(carContext, flowIconRes)).build()
         }
 
         return Row.Builder()

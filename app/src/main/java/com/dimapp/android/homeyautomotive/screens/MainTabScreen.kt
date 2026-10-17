@@ -11,7 +11,6 @@ import androidx.car.app.model.GridItem
 import androidx.car.app.model.GridTemplate
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.ListTemplate
-import androidx.car.app.model.MessageTemplate
 import androidx.car.app.model.Row
 import androidx.car.app.model.SectionedItemList
 import androidx.car.app.model.Tab
@@ -99,9 +98,25 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
     /** Flag indicating if a specific dashboard is currently being downloaded. */
     private var isFetchingDashboard = false
 
+    /** Flag to ensure the connected hub toast is shown only once per app launch session. */
+    private var hasShownStartupToast = false
+
     init {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
+                if (!hasShownStartupToast) {
+                    hasShownStartupToast = true
+                    val selectedId = storage.getSelectedHomeyId()
+                    val hubName = if (storage.isDemoMode()) {
+                        carContext.getString(R.string.demo_hub_name)
+                    } else {
+                        selectedId?.let { storage.getAllHubTokens()[it]?.name ?: it }
+                    }
+                    if (!hubName.isNullOrBlank()) {
+                        val toastText = carContext.getString(R.string.startup_connected_toast, hubName)
+                        CarToast.makeText(carContext, toastText, CarToast.LENGTH_SHORT).show()
+                    }
+                }
                 _checkAndRefresh()
                 _startPeriodicSync()
             }
@@ -208,11 +223,19 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
      */
     private fun _buildContentForCurrentState(): Template {
         if (isLoading) {
-            return renderer.buildLoadingTemplate()
+            return if (activeTabId == "tab_home") {
+                renderer.buildHomeGridLoadingTemplate()
+            } else {
+                renderer.buildLoadingTemplate()
+            }
         }
 
         if (errorMessage != null) {
-            return renderer.buildErrorTemplate(errorMessage!!)
+            return if (activeTabId == "tab_home") {
+                renderer.buildHomeGridErrorTemplate(errorMessage!!)
+            } else {
+                renderer.buildListErrorTemplate(errorMessage!!)
+            }
         }
 
         return when (activeTabId) {
@@ -288,8 +311,8 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
             // This is critical for the "Virtual Dashboard" which has a static ID but dynamic content.
             dashboardId?.let { dashboardDeviceIdsCache.remove(it) }
 
-            // Silently synchronize geofence configuration (home coordinates & barrier selection)
-            if (storage.isGeofenceEnabled() && !storage.isDemoMode()) {
+            // Silently synchronize home location only if already configured (do not re-enable if user deactivated it)
+            if (!storage.isDemoMode() && storage.getHomeLocation(hubId) != null) {
                 scope.launch(Dispatchers.IO) {
                     try {
                         val authRepo = DependencyManager.getAuthRepository(carContext)
@@ -455,6 +478,39 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
             
             Log.d(TAG, "_checkAndRefresh: reload needed (configChanged=$configChanged, hubChanged=$hubChanged, cacheEmpty=${deviceRepository.isCacheEmpty()}, flowCacheEmpty=${flowRepository.isCacheEmpty()}, silent=$isSilent, force=$shouldForce)")
             _loadDevices(silent = isSilent, force = shouldForce)
+        }
+
+        _syncActiveHubName()
+    }
+
+    /**
+     * Synchronizes the active hub's user-defined system name (e.g., "Veggia") in the background.
+     *
+     * Private method.
+     * If the current active hub name is generic ("Homey") or null, queries the REST API
+     * and updates [TokenStorage].
+     */
+    private fun _syncActiveHubName() {
+        val selectedId = storage.getSelectedHomeyId() ?: return
+        if (storage.isDemoMode()) return
+        val currentName = storage.getSelectedHomeyName()
+        if (currentName != null && !currentName.equals("Homey", ignoreCase = true)) return
+
+        val entry = storage.getHubToken(selectedId) ?: return
+        val token = entry.sessionToken ?: return
+        val apiUrl = entry.apiUrl ?: return
+
+        val authRepo = DependencyManager.getAuthRepository(carContext)
+        scope.launch(Dispatchers.IO) {
+            try {
+                val realName = authRepo.fetchHubSystemName(apiUrl, token)
+                if (!realName.isNullOrBlank() && realName != currentName) {
+                    Log.i(TAG, "[MainTabScreen:_syncActiveHubName] Resolved active hub name: '$currentName' -> '$realName'")
+                    storage.updateHubName(selectedId, realName)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "[MainTabScreen:_syncActiveHubName] Failed to sync hub name: ${e.message}")
+            }
         }
     }
 
@@ -663,7 +719,7 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
         if (source == HomeSource.DASHBOARD && dashboardId != null) {
             if (!dashboardDeviceIdsCache.containsKey(dashboardId)) {
                 _prefetchDashboardDeviceIds(dashboardId)
-                return renderer.buildLoadingTemplate()
+                return renderer.buildHomeGridLoadingTemplate()
             }
         }
 
