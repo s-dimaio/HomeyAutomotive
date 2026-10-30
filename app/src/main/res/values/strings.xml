@@ -241,4 +241,10 @@
     <string name="startup_connected_toast">Connected to: %s</string>
     <string name="main_error_tap_to_retry">Tap to retry</string>
     <string name="main_driving_restriction_notice">Full list available when parked</string>
+
+    <!-- Re-authentication & Security Update -->
+    <string name="auth_reauth_companion_updated_title">Homey Security Update</string>
+    <string name="auth_reauth_companion_updated_desc">Companion app was updated. Tap to reconnect this hub.</string>
+    <string name="auth_reauth_expired_title">Session Expired</string>
+    <string name="auth_reauth_expired_desc">Tap to sign in again and restore access.</string>
 </resources>

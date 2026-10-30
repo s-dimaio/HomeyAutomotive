@@ -38,7 +38,13 @@ class HomeyIdSetupScreen(
     private val isAddingHub: Boolean = false,
 ) : Screen(carContext) {
     /** The current value typed into the input field. Updated by [InputCallback.onInputTextChanged]. */
-    private var inputValue: String = initialId
+    private var inputValue: String = if (initialId.isNotBlank()) {
+        initialId
+    } else if (!isAddingHub) {
+        DependencyManager.getTokenStorage(carContext).getSelectedHomeyId() ?: ""
+    } else {
+        ""
+    }
 
     /** Current error message to show below the input field (if any). */
     private var errorMessage: String? = null
@@ -68,18 +74,22 @@ class HomeyIdSetupScreen(
         })
             // Append invisible zero-width spaces to force the host to recreate the input field
             .setHint(carContext.getString(R.string.homey_id_setup_hint) + "\u200B".repeat(resetCount % 5))
-            .setDefaultValue(inputValue)
             .setKeyboardType(InputSignInMethod.KEYBOARD_DEFAULT)
             .setShowKeyboardByDefault(true)
+
+        if (inputValue.isNotBlank()) {
+            inputMethodBuilder.setDefaultValue(inputValue)
+        }
 
         // Set error message if validation failed
         errorMessage?.let { inputMethodBuilder.setErrorMessage(it) }
 
         val inputMethod = inputMethodBuilder.build()
+        val showBack = isAddingHub || screenManager.stackSize > 1
 
         return SignInTemplate.Builder(inputMethod)
             .setTitle(carContext.getString(R.string.homey_id_setup_title))
-            .setHeaderAction(if (isAddingHub) Action.BACK else Action.APP_ICON)
+            .setHeaderAction(if (showBack) Action.BACK else Action.APP_ICON)
             .setInstructions(carContext.getString(R.string.homey_id_setup_instructions))
             .setAdditionalText(carContext.getString(R.string.homey_id_setup_additional))
             .addAction(

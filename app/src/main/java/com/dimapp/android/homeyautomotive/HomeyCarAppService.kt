@@ -96,7 +96,7 @@ class HomeySession : Session() {
         } else if (allHubs.isNotEmpty()) {
             HomeySelectionScreen(carContext, showBackButton = false)
         } else {
-            HomeyIdSetupScreen(carContext, isAddingHub = false)
+            HomeyIdSetupScreen(carContext, initialId = selectedHubId ?: "", isAddingHub = false)
         }
     }
 }

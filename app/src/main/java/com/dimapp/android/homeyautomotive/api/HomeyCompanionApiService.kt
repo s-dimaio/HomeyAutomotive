@@ -76,10 +76,14 @@ data class GeofenceEventResponse(
 
 /**
  * Thermometer classification configuration mapping device ID to mode:
- * "indoor", "outdoor", or "ignored".
+ * "indoor", "outdoor", or "ignored", with optional list of allowed climate classes.
+ *
+ * @property config Map of device UUID to mode ("indoor", "outdoor", "ignored").
+ * @property allowedClasses List of allowed device classes for climate temperature calculation.
  */
 data class ThermometersConfigDto(
-    @SerializedName("config") val config: Map<String, String> = emptyMap()
+    @SerializedName("config") val config: Map<String, String> = emptyMap(),
+    @SerializedName("allowed_classes") val allowedClasses: List<String>? = null
 )
 
 

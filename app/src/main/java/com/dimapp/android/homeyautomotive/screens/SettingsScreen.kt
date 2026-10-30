@@ -378,9 +378,9 @@ class SettingsScreen(carContext: CarContext) : Screen(carContext) {
                     GeofenceManager.reregisterFromStorage(carContext)
                 }
                 else -> {
+                    storage.setGeofenceRadius(GeofenceManager.DEFAULT_RADIUS_METERS)
                     storage.setGeofenceEnabled(false)
-                    // The 300m perimeter is already registered with Google Play Services for Homey Flows.
-                    // Alerts are now suppressed on-screen without making a redundant IPC call.
+                    GeofenceManager.reregisterFromStorage(carContext)
                     Log.d(TAG, "[SettingsScreen:_cycleGeofenceRadius] In-car alerts disabled; geofence perimeter kept active at 300m for Homey Flows.")
                 }
             }

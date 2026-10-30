@@ -15,6 +15,18 @@ val LIGHT_CLASSES = setOf(
 )
 
 /**
+ * Device classes considered valid environmental/climate temperature sources.
+ * Matches Homey's native climate domain. Devices with other classes reporting
+ * `measure_temperature` (e.g. "oven", "kettle", "coffeemachine", "car") are excluded.
+ */
+val CLIMATE_CLASSES = setOf(
+    "sensor",
+    "thermostat",
+    "heater",
+    "airconditioning"
+)
+
+/**
  * Capability used to open/close garage doors and gates.
  * `false` = open, `true` = closed.
  */

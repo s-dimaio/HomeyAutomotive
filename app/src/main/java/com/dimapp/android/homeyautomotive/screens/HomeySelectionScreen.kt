@@ -118,8 +118,22 @@ class HomeySelectionScreen(
 
         homeys.forEach { homey ->
             val isActive = homey.id == activeId
+            val isReauth = storage.isReauthRequired(homey.id)
+            val reauthText = if (isReauth) {
+                if (storage.getReauthReason(homey.id) == "COMPANION_UPDATED") {
+                    carContext.getString(R.string.auth_reauth_companion_updated_title)
+                } else {
+                    carContext.getString(R.string.auth_reauth_expired_title)
+                }
+            } else ""
+
             val rowTitle = if (homey.id == "demo") homey.name else "${homey.name} (id: ${homey.id.take(16)}...)"
-            val rowSubtitle = if (isActive) carContext.getString(R.string.homey_selection_active_label) else ""
+            val rowSubtitle = when {
+                isActive && isReauth -> "${carContext.getString(R.string.homey_selection_active_label)} • $reauthText"
+                isActive -> carContext.getString(R.string.homey_selection_active_label)
+                isReauth -> reauthText
+                else -> ""
+            }
 
             val rowBuilder = Row.Builder()
                 .setTitle(rowTitle)

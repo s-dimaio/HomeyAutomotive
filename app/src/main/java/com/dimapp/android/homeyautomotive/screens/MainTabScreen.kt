@@ -23,6 +23,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.dimapp.android.homeyautomotive.R
 import com.dimapp.android.homeyautomotive.api.models.FlowDto
 import com.dimapp.android.homeyautomotive.core.DependencyManager
+import com.dimapp.android.homeyautomotive.geofence.GeofenceManager
 import com.dimapp.android.homeyautomotive.repository.models.HomeyDevice
 import com.dimapp.android.homeyautomotive.repository.DeviceRepository
 import com.dimapp.android.homeyautomotive.repository.DashboardRepository
@@ -230,6 +231,15 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
             }
         }
 
+        if (storage.isReauthRequired()) {
+            val isCompanionUpdated = storage.getReauthReason() == "COMPANION_UPDATED"
+            return if (activeTabId == "tab_home") {
+                renderer.buildHomeGridReauthTemplate(isCompanionUpdated) { _navigateToReauth() }
+            } else {
+                renderer.buildListReauthTemplate(isCompanionUpdated) { _navigateToReauth() }
+            }
+        }
+
         if (errorMessage != null) {
             return if (activeTabId == "tab_home") {
                 renderer.buildHomeGridErrorTemplate(errorMessage!!)
@@ -311,12 +321,17 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
             // This is critical for the "Virtual Dashboard" which has a static ID but dynamic content.
             dashboardId?.let { dashboardDeviceIdsCache.remove(it) }
 
-            // Silently synchronize home location only if already configured (do not re-enable if user deactivated it)
+            // Silently synchronize home location and ensure geofence is registered (only if already configured)
             if (!storage.isDemoMode() && storage.getHomeLocation(hubId) != null) {
+                // Immediately register perimeter from cached coordinates so background triggers are active
+                GeofenceManager.reregisterFromStorage(carContext)
                 scope.launch(Dispatchers.IO) {
                     try {
                         val authRepo = DependencyManager.getAuthRepository(carContext)
-                        authRepo.refreshHomeLocation(hubId)
+                        val updatedCoords = authRepo.refreshHomeLocation(hubId)
+                        if (updatedCoords != null) {
+                            GeofenceManager.reregisterFromStorage(carContext)
+                        }
                     } catch (e: Exception) {
                         Log.w(TAG, "[MainTabScreen:_loadData] Silent geofence sync failed: ${e.message}")
                     }
@@ -812,5 +827,23 @@ class MainTabScreen(carContext: CarContext) : Screen(carContext) {
 
             invalidate()
         }
+    }
+
+    /**
+     * Navigates the driver to [HomeyIdSetupScreen] to re-link the currently active hub,
+     * pre-filling the input field with the active Homey ID.
+     *
+     * @private
+     */
+    private fun _navigateToReauth() {
+        val hubId = storage.getSelectedHomeyId() ?: ""
+        Log.i(TAG, "Navigating to HomeyIdSetupScreen for hub re-authentication ($hubId).")
+        screenManager.push(
+            HomeyIdSetupScreen(
+                carContext = carContext,
+                initialId = hubId,
+                isAddingHub = false
+            )
+        )
     }
 }

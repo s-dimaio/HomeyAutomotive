@@ -47,7 +47,9 @@ data class HubTokenEntry(
     @SerializedName("sessionToken") val sessionToken: String? = null,
     @SerializedName("refreshSecret") val refreshSecret: String? = null,
     @SerializedName("name") val name: String? = null,
-    @SerializedName("apiUrl") val apiUrl: String? = null
+    @SerializedName("apiUrl") val apiUrl: String? = null,
+    @SerializedName("isReauthRequired") val isReauthRequired: Boolean = false,
+    @SerializedName("reauthReason") val reauthReason: String? = null
 )
 
 /** Possible sources for the Home tab device list. */
@@ -208,10 +210,18 @@ class TokenStorage(private val context: Context) {
 
     /**
      * Submits a fresh token for a hub, implicitly making it the active hub if saveAsActive is true.
+     * Clears any active re-authentication flags for this hub.
      */
     fun saveHubToken(homeyId: String, name: String, sessionToken: String, refreshSecret: String, apiUrl: String, saveAsActive: Boolean = true) {
         val tokensMap = getAllHubTokens().toMutableMap()
-        tokensMap[homeyId] = HubTokenEntry(sessionToken, refreshSecret, name, apiUrl)
+        tokensMap[homeyId] = HubTokenEntry(
+            sessionToken = sessionToken,
+            refreshSecret = refreshSecret,
+            name = name,
+            apiUrl = apiUrl,
+            isReauthRequired = false,
+            reauthReason = null
+        )
         
         val editor = prefs.edit().putString(KEY_HUB_TOKENS, gson.toJson(tokensMap))
         
@@ -222,6 +232,45 @@ class TokenStorage(private val context: Context) {
         }
         
         editor.apply()
+    }
+
+    /**
+     * Marks whether a specific hub requires user re-authentication, along with an optional reason.
+     *
+     * @public
+     * @param homeyId The ID of the target hub.
+     * @param required Whether re-authentication is required.
+     * @param reason The diagnostic reason (e.g. "COMPANION_UPDATED" or "EXPIRED").
+     */
+    fun setReauthRequired(homeyId: String, required: Boolean, reason: String? = null) {
+        val tokensMap = getAllHubTokens().toMutableMap()
+        val entry = tokensMap[homeyId] ?: return
+        tokensMap[homeyId] = entry.copy(isReauthRequired = required, reauthReason = if (required) reason else null)
+        prefs.edit().putString(KEY_HUB_TOKENS, gson.toJson(tokensMap)).apply()
+    }
+
+    /**
+     * Checks if re-authentication is required for the specified hub (or currently active hub).
+     *
+     * @public
+     * @param hubId Optional target hub ID. Defaults to active hub.
+     * @return `true` if re-authentication is needed, `false` otherwise.
+     */
+    fun isReauthRequired(hubId: String? = null): Boolean {
+        val targetId = hubId ?: getSelectedHomeyId() ?: return false
+        return getHubToken(targetId)?.isReauthRequired == true
+    }
+
+    /**
+     * Retrieves the re-authentication reason for the specified hub (or currently active hub).
+     *
+     * @public
+     * @param hubId Optional target hub ID. Defaults to active hub.
+     * @return The reason string (e.g. "COMPANION_UPDATED"), or `null`.
+     */
+    fun getReauthReason(hubId: String? = null): String? {
+        val targetId = hubId ?: getSelectedHomeyId() ?: return null
+        return getHubToken(targetId)?.reauthReason
     }
 
     /**

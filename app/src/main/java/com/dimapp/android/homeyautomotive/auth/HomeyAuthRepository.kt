@@ -123,6 +123,7 @@ class HomeyAuthRepository(
 
             if (!response.session_token.isNullOrBlank() && !response.athom_refresh_token.isNullOrBlank()) {
                 storage.updateHubTokens(targetId, response.session_token, response.athom_refresh_token)
+                storage.setReauthRequired(targetId, false)
                 Log.i(TAG, "Hub session token refreshed successfully for ${SanitizedHttpLogger.maskId(targetId)}.")
                 true
             } else {
@@ -131,6 +132,12 @@ class HomeyAuthRepository(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Hub session token refresh failed for ${SanitizedHttpLogger.maskId(targetId)} with exception: ${e.message}")
+            if (e is retrofit2.HttpException && e.code() == 401) {
+                val errorBody = try { e.response()?.errorBody()?.string().orEmpty() } catch (_: Exception) { "" }
+                val isCompanionUpdated = errorBody.contains("COMPANION_UPDATED") || errorBody.contains("REAUTH_REQUIRED")
+                Log.w(TAG, "Auth refresh rejected with HTTP 401 (isCompanionUpdated=$isCompanionUpdated) for ${SanitizedHttpLogger.maskId(targetId)}.")
+                storage.setReauthRequired(targetId, true, if (isCompanionUpdated) "COMPANION_UPDATED" else "EXPIRED")
+            }
             false
         }
     }

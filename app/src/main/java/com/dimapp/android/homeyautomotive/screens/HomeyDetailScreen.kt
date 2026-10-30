@@ -44,7 +44,22 @@ class HomeyDetailScreen(
         val builder = MessageTemplate.Builder(message)
             .setHeader(header)
 
-        if (!isActive) {
+        if (storage.isReauthRequired(homey.id)) {
+            builder.addAction(
+                Action.Builder()
+                    .setTitle(carContext.getString(R.string.auth_reauth_companion_updated_title))
+                    .setOnClickListener(ParkedOnlyOnClickListener.create {
+                        screenManager.push(
+                            HomeyIdSetupScreen(
+                                carContext = carContext,
+                                initialId = homey.id,
+                                isAddingHub = false
+                            )
+                        )
+                    })
+                    .build()
+            )
+        } else if (!isActive) {
             builder.addAction(
                 Action.Builder()
                     .setTitle(carContext.getString(R.string.homey_detail_select))

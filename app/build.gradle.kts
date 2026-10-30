@@ -15,8 +15,8 @@ android {
         applicationId = "com.dimapp.android.homeyautomotive"
         minSdk = 29
         targetSdk = 36
-        versionCode = 47
-        versionName = "1.9.2"
+        versionCode = 52
+        versionName = "1.10.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

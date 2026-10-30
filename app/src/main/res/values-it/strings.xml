@@ -239,4 +239,10 @@
     <string name="startup_connected_toast">Connesso a: %s</string>
     <string name="main_error_tap_to_retry">Tocca per riprovare</string>
     <string name="main_driving_restriction_notice">Elenco completo a veicolo fermo</string>
+
+    <!-- Re-authentication & Security Update -->
+    <string name="auth_reauth_companion_updated_title">Aggiornamento di sicurezza Homey</string>
+    <string name="auth_reauth_companion_updated_desc">La Companion App è stata aggiornata. Tocca qui per riconnettere l\'hub.</string>
+    <string name="auth_reauth_expired_title">Sessione scaduta</string>
+    <string name="auth_reauth_expired_desc">Tocca qui per accedere nuovamente e ripristinare il controllo.</string>
 </resources>

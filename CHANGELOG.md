@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-10-30
+
+### Added
+- **Scoped User Session Token Authentication**: Fully upgraded OAuth2 token exchange via Athom Bound Delegation tokens. Replaced legacy owner tokens with user-scoped credentials mapped directly to the local Homey Pro user gateway.
+- **Smart Re-Authentication Detection & In-Car Notice**: Added graceful detection for HTTP 401 re-authentication states (`REAUTH_REQUIRED` / `COMPANION_UPDATED`). The app displays an informative dedicated in-car template explaining the update and offering a 1-tap re-login action.
+- **Auto-Prefilled Homey ID on Re-Authentication**: The input field in `HomeyIdSetupScreen` is now pre-filled with the active Homey hub ID, allowing the driver to confirm with a single tap without manual typing.
+- **Direct Native Flow Execution**: Standard Flows and Advanced Flows are now triggered directly via native Homey Pro REST API endpoints (`POST /api/manager/flow/flow/{id}/trigger` and `POST /api/manager/flow/advancedflow/{id}/trigger`), completely eliminating the prerequisite for the HomeyScript companion proxy.
+
+### Changed
+- **Zero Prerequisite for Flows**: Users no longer need to install or configure HomeyScript on Homey Pro to execute flows from the vehicle.
+- **Optimized Re-auth Navigation**: Added back navigation support during re-authentication stacks, preventing drivers from getting stuck on input screens.
+
 ## [1.9.2] - 2026-10-17
 
 ### Added

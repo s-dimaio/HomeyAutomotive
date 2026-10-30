@@ -9,6 +9,7 @@ import com.dimapp.android.homeyautomotive.api.models.SetCapabilityBody
 import com.dimapp.android.homeyautomotive.api.models.ZoneDto
 import com.dimapp.android.homeyautomotive.repository.models.CAP_GARAGEDOOR
 import com.dimapp.android.homeyautomotive.repository.models.CAP_ONOFF
+import com.dimapp.android.homeyautomotive.repository.models.CLIMATE_CLASSES
 import com.dimapp.android.homeyautomotive.repository.models.DOOR_CLASSES
 import com.dimapp.android.homeyautomotive.repository.models.LIGHT_CLASSES
 import com.dimapp.android.homeyautomotive.repository.models.HomeyDevice
@@ -37,6 +38,7 @@ class DeviceRepository(
     private var cachedIndoorTemperature: Double? = null
     private var cachedOutdoorTemperature: Double? = null
     private var cachedThermometersConfig: Map<String, String>? = null
+    private var cachedAllowedClimateClasses: Set<String>? = null
     private var demoDevices: MutableList<HomeyDevice>? = null
 
     /**
@@ -101,8 +103,12 @@ class DeviceRepository(
     private suspend fun _syncThermometersConfig(hubId: String) {
         try {
             val companionService = HomeyCompanionApiClient.create(hubId, BuildConfig.DEBUG)
-            cachedThermometersConfig = companionService.getThermometersConfig().config
-            Log.d(TAG, "[DeviceRepository:_syncThermometersConfig] Loaded ${cachedThermometersConfig?.size ?: 0} thermometer configurations.")
+            val response = companionService.getThermometersConfig()
+            cachedThermometersConfig = response.config
+            if (!response.allowedClasses.isNullOrEmpty()) {
+                cachedAllowedClimateClasses = response.allowedClasses.map { it.lowercase() }.toSet()
+            }
+            Log.d(TAG, "[DeviceRepository:_syncThermometersConfig] Loaded ${cachedThermometersConfig?.size ?: 0} thermometer configurations, ${cachedAllowedClimateClasses?.size ?: CLIMATE_CLASSES.size} allowed climate classes.")
         } catch (e: Exception) {
             Log.w(TAG, "[DeviceRepository:_syncThermometersConfig] Failed to fetch thermometer configuration: ${e.message}")
             if (cachedThermometersConfig == null) {
@@ -113,10 +119,10 @@ class DeviceRepository(
 
     /**
      * Calculates room temperatures and overall indoor/outdoor home averages from raw device DTOs,
-     * respecting Homey's native climate exclusions and the companion app's thermometer classifications.
+     * respecting Homey's native climate exclusions, device classes, and the companion app's thermometer classifications.
      *
-     * Devices marked with `climate_exclude: true` or set to ignored are excluded from both room averages
-     * and home indoor/outdoor calculations.
+     * Devices marked with `climate_exclude: true`, set to ignored, or whose effective class is not
+     * recognized as an environmental/climate class (e.g. smart ovens) are excluded from all temperature aggregations.
      *
      * @private
      * @param devices The map of raw [DeviceDto] objects.
@@ -130,9 +136,17 @@ class DeviceRepository(
         val indoorReadings = mutableListOf<Double>()
         val outdoorReadings = mutableListOf<Double>()
 
+        val allowedClasses = cachedAllowedClimateClasses ?: CLIMATE_CLASSES
+
         for (dto in devices.values) {
             // Respect Homey native climate exclusion (advanced device settings or climate tab) and hidden devices
             if (dto.settings?.climateExclude == true || dto.hidden == true) {
+                continue
+            }
+
+            // Exclude devices that are not part of the climate domain (e.g. smart ovens, kettles, coffee machines, cars)
+            val effectiveClass = dto.effectiveClass?.lowercase()
+            if (effectiveClass == null || effectiveClass !in allowedClasses) {
                 continue
             }
 

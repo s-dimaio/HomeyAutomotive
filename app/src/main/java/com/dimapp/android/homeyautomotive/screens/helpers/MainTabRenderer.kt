@@ -122,6 +122,83 @@ class MainTabRenderer(
     }
 
     /**
+     * Builds an in-place re-authentication grid template for the Home tab when the session is invalid or companion app was updated.
+     *
+     * Public method.
+     *
+     * @param isCompanionUpdated Whether the re-authentication was triggered specifically by a companion app security upgrade.
+     * @param onReauthRequested Callback triggered when the driver taps the re-authentication tile.
+     * @return [Template] (GridTemplate) with re-authentication tile and direct action.
+     * @example
+     * val template = renderer.buildHomeGridReauthTemplate(true) { navigateToReauth() }
+     */
+    fun buildHomeGridReauthTemplate(isCompanionUpdated: Boolean, onReauthRequested: () -> Unit): Template {
+        val title = if (isCompanionUpdated) {
+            carContext.getString(R.string.auth_reauth_companion_updated_title)
+        } else {
+            carContext.getString(R.string.auth_reauth_expired_title)
+        }
+        val desc = if (isCompanionUpdated) {
+            carContext.getString(R.string.auth_reauth_companion_updated_desc)
+        } else {
+            carContext.getString(R.string.auth_reauth_expired_desc)
+        }
+
+        val itemBuilder = ItemList.Builder()
+        itemBuilder.addItem(
+            GridItem.Builder()
+                .setTitle(title)
+                .setText(desc)
+                .setImage(
+                    CarIcon.Builder(
+                        IconCompat.createWithResource(carContext, R.drawable.ic_settings)
+                    ).build()
+                )
+                .setOnClickListener { onReauthRequested() }
+                .build()
+        )
+        return GridTemplate.Builder()
+            .setSingleList(itemBuilder.build())
+            .build()
+    }
+
+    /**
+     * Builds an in-place re-authentication list template for list-based tabs when the session is invalid or companion app was updated.
+     *
+     * Public method.
+     *
+     * @param isCompanionUpdated Whether the re-authentication was triggered specifically by a companion app security upgrade.
+     * @param onReauthRequested Callback triggered when the driver taps the re-authentication row.
+     * @return [Template] (ListTemplate) with re-authentication row and direct action.
+     * @example
+     * val template = renderer.buildListReauthTemplate(true) { navigateToReauth() }
+     */
+    fun buildListReauthTemplate(isCompanionUpdated: Boolean, onReauthRequested: () -> Unit): Template {
+        val title = if (isCompanionUpdated) {
+            carContext.getString(R.string.auth_reauth_companion_updated_title)
+        } else {
+            carContext.getString(R.string.auth_reauth_expired_title)
+        }
+        val desc = if (isCompanionUpdated) {
+            carContext.getString(R.string.auth_reauth_companion_updated_desc)
+        } else {
+            carContext.getString(R.string.auth_reauth_expired_desc)
+        }
+
+        val listBuilder = ItemList.Builder()
+        listBuilder.addItem(
+            Row.Builder()
+                .setTitle(title)
+                .addText(desc)
+                .setOnClickListener { onReauthRequested() }
+                .build()
+        )
+        return ListTemplate.Builder()
+            .setSingleList(listBuilder.build())
+            .build()
+    }
+
+    /**
      * Builds a grid of devices for the Home/Dashboard tab.
      *
      * Public method.
